@@ -96,3 +96,48 @@ resource "netskopebwan_gateway_port_forward" "nat" {
 resource "netskopebwan_gateway_activate" "token" {
   gateway_id = resource.netskopebwan_gateway.test.id
 }
+
+// Policies
+resource "netskopebwan_policy" "gwpolicy" {
+   name = "gwpolicy1"
+   type ="gateway"
+}
+
+resource "netskopebwan_policy" "clientpolicy" {
+   name = "clientpolicy1"
+   type ="client"
+}
+
+// Templates
+resource "netskopebwan_gateway" "clienttemplate" {
+   name = "clienttemplate1"
+   description ="example"
+
+   model="Client"
+   role="spoke"
+   is_template=true
+
+   client_configuration {
+      ipv4_pool_ranges {
+         pool_start = "10.200.11.1"
+         pool_end = "10.200.11.2"
+      }
+      ipv4_pool_ranges {
+         pool_start = "10.200.16.10"
+         pool_end = "10.200.16.20"
+      }
+      ipv4_pool_ranges {
+         pool_start = "10.200.20.3"
+         pool_end = "10.200.20.10"
+      }
+   }
+}
+
+resource "netskopebwan_gateway" "gwtemplate" {
+   name = "gwtemplate1"
+   description ="example"
+
+   model="iXVirtual"
+   role="spoke"
+   is_template=true
+}
