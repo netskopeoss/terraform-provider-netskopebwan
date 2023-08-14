@@ -159,8 +159,8 @@ github.com/imdario/mergo v0.3.11/go.mod h1:jmQim1M+e3UYxmgPu/WyfjB3N3VflVyUjjjwH
 github.com/imdario/mergo v0.3.12/go.mod h1:jmQim1M+e3UYxmgPu/WyfjB3N3VflVyUjjjwH0dnCYA=
 github.com/imdario/mergo v0.3.13 h1:lFzP57bqS/wsqKssCGmtLAb8A0wKjLGrve2q3PPVcBk=
 github.com/imdario/mergo v0.3.13/go.mod h1:4lJ1jqUDcsbIECGy0RUJAXNIhg+6ocWgb1ALK2O4oXg=
-github.com/infiotinc/netskopebwan-go-client v0.0.0-20221020165008-10349a73b884 h1:vL82jjMGebRwC0/9lAYbDQ++70y8i9pYU6YcE8NxtvE=
-github.com/infiotinc/netskopebwan-go-client v0.0.0-20221020165008-10349a73b884/go.mod h1:0G2alZHFQfgGep00oloIIwvnVuHrYK6Zh6vtGA8HxN4=
+github.com/infiotinc/netskopebwan-go-client v0.0.0-20230814093256-e15200170240 h1:TCtEivQCBR/IDU4Goe23qm9xI1ghEM2/EnS88GID5dE=
+github.com/infiotinc/netskopebwan-go-client v0.0.0-20230814093256-e15200170240/go.mod h1:0G2alZHFQfgGep00oloIIwvnVuHrYK6Zh6vtGA8HxN4=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 h1:BQSFePA1RWJOlocH6Fxy8MmwDt+yVQYULKfN0RoTN8A=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99/go.mod h1:1lJo3i6rXxKeerYnT8Nvf0QmHCRC1n8sfWVwXF2Frvo=
 github.com/jessevdk/go-flags v1.5.0/go.mod h1:Fw0T6WPc1dYxT4mKEZRfG5kJhaTDP9pj1c2EWnYs/m4=

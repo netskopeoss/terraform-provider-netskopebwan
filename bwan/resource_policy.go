@@ -24,6 +24,7 @@ func (rt _resourcePolicy) resourcePolicyCreate(
 		Name:   policyInput.Name,
 		Hubs:   policyInput.Hubs,
 		Config: policyInput.Config,
+		Type_:  policyInput.Type_,
 	}
 
 	policy, _, err := apiSvc.PoliciesApi.AddPolicy(ctx, addPolicyInput, nil)

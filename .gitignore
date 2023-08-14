@@ -2,3 +2,9 @@
 examples/.terraform*
 examples/terraform.tfstate*
 dist/*
+
+# executable
+terraform-provider-netskopebwan
+
+# ignore dir
+ignore

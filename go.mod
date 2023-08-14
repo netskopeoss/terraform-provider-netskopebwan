@@ -6,7 +6,7 @@ require (
 	github.com/antihax/optional v1.0.0
 	github.com/hashicorp/terraform-plugin-docs v0.13.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.24.0
-	github.com/infiotinc/netskopebwan-go-client v0.0.0-20221020165008-10349a73b884
+	github.com/infiotinc/netskopebwan-go-client v0.0.0-20230814093256-e15200170240
 	github.com/stretchr/testify v1.8.1
 )
 
