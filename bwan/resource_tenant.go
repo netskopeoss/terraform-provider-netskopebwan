@@ -58,6 +58,7 @@ func (rt _resourceTenant) resourceTenantRead(
 		}
 		return diag.FromErr(err)
 	}
+
 	err = ApplyBinderResourceData(rt.Binder, d, tenant)
 	if err != nil {
 		return diag.FromErr(err)
@@ -123,7 +124,7 @@ type _resourceTenant struct {
 
 func resourceTenant() *schema.Resource {
 	swaggerSchema, binder, inputBinder := ReflectSchema(swagger.Tenant{}, Cfg{
-		"name": {Schema: schema.Schema{Required: true}},
+		"name": {Schema: &schema.Schema{Required: true}},
 	})
 
 	rt := _resourceTenant{Binder: binder, InputBinder: inputBinder}

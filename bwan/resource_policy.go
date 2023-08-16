@@ -129,7 +129,11 @@ type _resourcePolicy struct {
 
 func resourcePolicy() *schema.Resource {
 	swaggerSchema, binder, inputBinder := ReflectSchema(swagger.Policy{}, Cfg{
-		"name": {Schema: schema.Schema{Required: true}},
+		"name": {Schema: &schema.Schema{Required: true}},
+		"config.pcfg_general_settings.pcfg_netflow.pcfg_nf_exporter_settings.nf_collector_settings": {
+			Schema:         &schema.Schema{Computed: true},
+			EmptyIsNotNull: true,
+		},
 	})
 
 	rt := _resourcePolicy{Binder: binder, InputBinder: inputBinder}

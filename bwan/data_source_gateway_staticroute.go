@@ -73,8 +73,8 @@ type dataSourceGatewayStaticRouteInput struct {
 func dataSourceGatewayStaticRoute() *schema.Resource {
 	swaggerSchema, binder, inputBinder := ReflectSchema(
 		dataSourceGatewayStaticRouteInput{}, Cfg{
-			"gateway_id":  {Schema: schema.Schema{Required: true}},
-			"destination": {Schema: schema.Schema{Required: true}},
+			"gateway_id":  {Schema: &schema.Schema{Required: true}},
+			"destination": {Schema: &schema.Schema{Required: true}},
 		})
 
 	rt := _dataSourceGatewayStaticRoute{Binder: binder, InputBinder: inputBinder}

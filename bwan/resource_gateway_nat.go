@@ -156,11 +156,11 @@ type resourceGatewayNatInput struct {
 
 func resourceGatewayNat() *schema.Resource {
 	swaggerSchema, binder, inputBinder := ReflectSchema(resourceGatewayNatInput{}, Cfg{
-		"gateway_id":      {Schema: schema.Schema{Required: true}},
-		"public_ip":       {Schema: schema.Schema{Required: true}},
-		"up_link_if_name": {Schema: schema.Schema{Required: true}},
-		"lan_ip":          {Schema: schema.Schema{Required: true}},
-		"bi_directional":  {Schema: schema.Schema{Required: true}},
+		"gateway_id":      {Schema: &schema.Schema{Required: true}},
+		"public_ip":       {Schema: &schema.Schema{Required: true}},
+		"up_link_if_name": {Schema: &schema.Schema{Required: true}},
+		"lan_ip":          {Schema: &schema.Schema{Required: true}},
+		"bi_directional":  {Schema: &schema.Schema{Required: true}},
 	})
 
 	rt := _resourceGatewayNat{
@@ -208,13 +208,13 @@ func resourceGatewayNat() *schema.Resource {
 
 func resourceGatewayPortForward() *schema.Resource {
 	swaggerSchema, binder, inputBinder := ReflectSchema(resourceGatewayNatInput{}, Cfg{
-		"gateway_id":      {Schema: schema.Schema{Required: true}},
-		"public_ip":       {Schema: schema.Schema{Required: true}},
-		"up_link_if_name": {Schema: schema.Schema{Required: true}},
-		"lan_ip":          {Schema: schema.Schema{Required: true}},
-		"bi_directional":  {Schema: schema.Schema{Required: true}},
-		"lan_port":        {Schema: schema.Schema{Required: true}},
-		"public_port":     {Schema: schema.Schema{Required: true}},
+		"gateway_id":      {Schema: &schema.Schema{Required: true}},
+		"public_ip":       {Schema: &schema.Schema{Required: true}},
+		"up_link_if_name": {Schema: &schema.Schema{Required: true}},
+		"lan_ip":          {Schema: &schema.Schema{Required: true}},
+		"bi_directional":  {Schema: &schema.Schema{Required: true}},
+		"lan_port":        {Schema: &schema.Schema{Required: true}},
+		"public_port":     {Schema: &schema.Schema{Required: true}},
 	})
 
 	rt := _resourceGatewayNat{
