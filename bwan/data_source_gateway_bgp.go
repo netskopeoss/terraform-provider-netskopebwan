@@ -74,8 +74,8 @@ type dataSourceGatewayBgpInput struct {
 
 func dataSourceGatewayBgp() *schema.Resource {
 	swaggerSchema, binder, inputBinder := ReflectSchema(dataSourceGatewayBgpInput{}, Cfg{
-		"name":       {Schema: schema.Schema{Required: true}},
-		"gateway_id": {Schema: schema.Schema{Required: true}},
+		"name":       {Schema: &schema.Schema{Required: true}},
+		"gateway_id": {Schema: &schema.Schema{Required: true}},
 	})
 
 	rt := _dataSourceGatewayBgp{Binder: binder, InputBinder: inputBinder}

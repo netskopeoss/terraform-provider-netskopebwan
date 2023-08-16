@@ -70,7 +70,7 @@ type _dataSourceTenant struct {
 func dataSourceTenant() *schema.Resource {
 	swaggerSchema, binder, swaggerInputBinder := ReflectSchema(swagger.Tenant{}, Cfg{
 		"name": {
-			Schema: schema.Schema{
+			Schema: &schema.Schema{
 				Optional: true,
 			},
 		},

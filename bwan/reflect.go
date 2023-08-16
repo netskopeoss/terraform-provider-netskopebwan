@@ -29,7 +29,8 @@ func ToSnakeCase(field reflect.StructField) string {
 }
 
 type Cfg map[string]struct {
-	schema.Schema
+	*schema.Schema
+	EmptyIsNotNull bool
 }
 
 func ReflectSchema(v interface{}, cfg Cfg) (map[string]*schema.Schema, []FieldBinder, []FieldBinder) {
@@ -84,10 +85,11 @@ func applyBinderInput(t reflect.Type, bm []FieldBinder, get func(k string) (inte
 			panic(fmt.Sprintf("field %v does not exist on %v", b.FieldName, nv.Type().String()))
 		}
 
-		mv, ok := get(b.MapKey)
-		if !ok || mv == nil {
-			continue
+		if b.MapKey == "strings0" {
+			fmt.Print()
 		}
+
+		mv, _ := get(b.MapKey)
 
 		iv, err := b.Func(reflect.ValueOf(mv))
 		if err != nil {
@@ -96,6 +98,7 @@ func applyBinderInput(t reflect.Type, bm []FieldBinder, get func(k string) (inte
 		if iv == nil {
 			continue
 		}
+
 		v := reflect.ValueOf(iv)
 
 		switch f.Type().Kind() {
@@ -221,21 +224,31 @@ func reflectSchemaType(path string, t reflect.Type, cfg Cfg) (map[string]*schema
 }
 
 func reflectSchemaField(path string, cfg Cfg, t reflect.Type, extra, allowDirectObject bool) (*schema.Schema, BinderFunc, BinderFunc) {
-	fcfg, ok := cfg[path]
+	fcfg := cfg[path]
 
 	s := fcfg.Schema
+	hasSchema := s != nil
+	if s == nil {
+		s = &schema.Schema{}
+	}
+
 	var b, ib BinderFunc
 	s.Type, s.Elem, b, ib = reflectSchemaFieldType(path, t, cfg, allowDirectObject)
-	if extra && !ok {
+	if extra && !hasSchema {
 		s.Optional = true
-		s.Computed = true
+		if s.Type != schema.TypeList {
+			s.Computed = true
+		}
+		if path == "id" {
+			s.Computed = true
+		}
 	}
 
 	if s.Type == schema.TypeSet {
 		s.MaxItems = 1
 	}
 
-	return &s, b, ib
+	return s, b, ib
 }
 
 type BinderFunc func(v reflect.Value) (interface{}, error)
@@ -305,7 +318,7 @@ func reflectSchemaFieldType(path string, t reflect.Type, cfg Cfg, allowDirectObj
 		}
 
 		return schema.TypeList, innerType, func(v reflect.Value) (interface{}, error) {
-				if v.IsZero() {
+				if v.IsZero() { // Equivalent to IsNil
 					return nil, nil
 				}
 
@@ -326,6 +339,11 @@ func reflectSchemaFieldType(path string, t reflect.Type, cfg Cfg, allowDirectObj
 				}
 
 				av := v.Interface().([]interface{})
+
+				if len(av) == 0 && !cfg[path].EmptyIsNotNull {
+					return nil, nil
+				}
+
 				nv := reflect.MakeSlice(t, 0, len(av))
 
 				for _, iv := range av {

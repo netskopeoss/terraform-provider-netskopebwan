@@ -181,10 +181,10 @@ type resourceGatewayBgpInput struct {
 
 func resourceGatewayBgp() *schema.Resource {
 	swaggerSchema, binder, inputBinder := ReflectSchema(resourceGatewayBgpInput{}, Cfg{
-		"name":       {Schema: schema.Schema{Required: true}},
-		"gateway_id": {Schema: schema.Schema{Required: true}},
-		"neighbor":   {Schema: schema.Schema{Required: true}},
-		"remote_as":  {Schema: schema.Schema{Required: true}},
+		"name":       {Schema: &schema.Schema{Required: true}},
+		"gateway_id": {Schema: &schema.Schema{Required: true}},
+		"neighbor":   {Schema: &schema.Schema{Required: true}},
+		"remote_as":  {Schema: &schema.Schema{Required: true}},
 	})
 
 	rt := _resourceGatewayBgp{Binder: binder, InputBinder: inputBinder}

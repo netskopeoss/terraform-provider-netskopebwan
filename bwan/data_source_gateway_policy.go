@@ -70,7 +70,7 @@ type _dataSourcePolicy struct {
 
 func dataSourcePolicy() *schema.Resource {
 	swaggerSchema, binder, swaggerInputBinder := ReflectSchema(swagger.Policy{}, Cfg{
-		"name": {Schema: schema.Schema{Required: true}},
+		"name": {Schema: &schema.Schema{Required: true}},
 	})
 
 	rt := _dataSourcePolicy{Binder: binder, InputBinder: swaggerInputBinder}

@@ -80,7 +80,7 @@ type dataSourceGatewayActivationInput struct {
 
 func resourceGatewayActivate() *schema.Resource {
 	swaggerSchema, binder, inputBinder := ReflectSchema(dataSourceGatewayActivationInput{}, Cfg{
-		"gateway_id": {Schema: schema.Schema{Required: true}},
+		"gateway_id": {Schema: &schema.Schema{Required: true}},
 	})
 	rt := _resourceGatewayActivate{Binder: binder, InputBinder: inputBinder}
 

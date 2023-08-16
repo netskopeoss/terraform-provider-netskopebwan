@@ -128,7 +128,7 @@ type _resourcePolicy struct {
 
 func resourcePolicy() *schema.Resource {
 	swaggerSchema, binder, inputBinder := ReflectSchema(swagger.Policy{}, Cfg{
-		"name": {Schema: schema.Schema{Required: true}},
+		"name": {Schema: &schema.Schema{Required: true}},
 	})
 
 	rt := _resourcePolicy{Binder: binder, InputBinder: inputBinder}

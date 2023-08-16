@@ -196,10 +196,10 @@ type resourceGatewayStaticRouteInput struct {
 
 func resourceGatewayStaticRoute() *schema.Resource {
 	swaggerSchema, binder, inputBinder := ReflectSchema(resourceGatewayStaticRouteInput{}, Cfg{
-		"gateway_id":  {Schema: schema.Schema{Required: true}},
-		"destination": {Schema: schema.Schema{Required: true}},
-		"device":      {Schema: schema.Schema{Required: true}},
-		"nhop":        {Schema: schema.Schema{Required: true}},
+		"gateway_id":  {Schema: &schema.Schema{Required: true}},
+		"destination": {Schema: &schema.Schema{Required: true}},
+		"device":      {Schema: &schema.Schema{Required: true}},
+		"nhop":        {Schema: &schema.Schema{Required: true}},
 	})
 
 	rt := _resourceGatewayStaticRoute{Binder: binder, InputBinder: inputBinder}

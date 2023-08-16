@@ -70,7 +70,7 @@ type _dataSourceUser struct {
 func dataSourceUser() *schema.Resource {
 	swaggerSchema, binder, swaggerInputBinder := ReflectSchema(swagger.User{}, Cfg{
 		"name": {
-			Schema: schema.Schema{
+			Schema: &schema.Schema{
 				Optional: true,
 			},
 		},

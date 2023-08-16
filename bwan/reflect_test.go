@@ -122,6 +122,10 @@ var EmbedObjectSchema = ms{
 	},
 }
 
+type ComplexObject struct {
+	Sub []ArrayObject
+}
+
 type i = interface{}
 type m = map[string]i
 type ms = map[string]*schema.Schema
@@ -281,6 +285,19 @@ func TestRoundTrip(t *testing.T) {
 			"parent_id": "",
 			"id":        "id",
 		}},
+		{"complex nesting", ComplexObject{
+			Sub: []ArrayObject{
+				{
+					Children: []NestedObjectChild{{Id: "1"}, {Id: "2"}},
+				},
+				{
+					Children: nil,
+				},
+			},
+		}, m{"sub": []i{
+			m{"children": []i{m{"id": "1"}, m{"id": "2"}}},
+			m{"children": nil},
+		}}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -297,7 +314,7 @@ func TestRoundTrip(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			assert.Equal(t, test.t, v.Interface())
+			assert.Equal(t, test.t, v)
 		})
 	}
 }

@@ -151,7 +151,7 @@ type _resourceGateway struct {
 
 func resourceGateway() *schema.Resource {
 	swaggerSchema, binder, inputBinder := ReflectSchema(swagger.Edge{}, Cfg{
-		"name": {Schema: schema.Schema{Required: true}},
+		"name": {Schema: &schema.Schema{Required: true}},
 	})
 
 	rt := _resourceGateway{Binder: binder, InputBinder: inputBinder}
