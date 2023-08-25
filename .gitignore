@@ -8,3 +8,6 @@ terraform-provider-netskopebwan
 
 # ignore dir
 ignore
+
+# Mac
+.DS_Store

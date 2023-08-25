@@ -108,6 +108,8 @@ github.com/infiotinc/netskopebwan-go-client v0.0.0-20230817100243-a8726d6f7735 h
 github.com/infiotinc/netskopebwan-go-client v0.0.0-20230817100243-a8726d6f7735/go.mod h1:0G2alZHFQfgGep00oloIIwvnVuHrYK6Zh6vtGA8HxN4=
 github.com/infiotinc/netskopebwan-go-client v0.0.0-20230817114141-673642007180 h1:QpIR7bLMVpK3embbLFZm9gqqQbpFbf0/fLI2IChNvss=
 github.com/infiotinc/netskopebwan-go-client v0.0.0-20230817114141-673642007180/go.mod h1:0G2alZHFQfgGep00oloIIwvnVuHrYK6Zh6vtGA8HxN4=
+github.com/infiotinc/netskopebwan-go-client v0.0.0-20230825142519-0b6852d430a0 h1:3byGlDAIeJfOahS0Wvms/EB+gxr/fBW2iybj49FSNp8=
+github.com/infiotinc/netskopebwan-go-client v0.0.0-20230825142519-0b6852d430a0/go.mod h1:0G2alZHFQfgGep00oloIIwvnVuHrYK6Zh6vtGA8HxN4=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 h1:BQSFePA1RWJOlocH6Fxy8MmwDt+yVQYULKfN0RoTN8A=
 github.com/jhump/protoreflect v1.6.0 h1:h5jfMVslIg6l29nsMs0D8Wj17RDVdNYti0vDN/PZZoE=
 github.com/kevinburke/ssh_config v1.2.0 h1:x584FjTGwHzMwvHx18PXxbBVzfnxogHaAReU4gf13a4=
