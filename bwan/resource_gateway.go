@@ -28,6 +28,11 @@ func (rt _resourceGateway) resourceGatewayCreate(
 		AssignedPolicy: gwInput.AssignedPolicy,
 		Description:    gwInput.Description,
 		Serialnumber:   gwInput.Serialnumber,
+		IsTemplate:     gwInput.IsTemplate,
+	}
+
+	if gwInput.ClientConfiguration != nil {
+		addGwInput.Ipv4PoolRanges = gwInput.ClientConfiguration.Ipv4PoolRanges
 	}
 
 	gateway, _, err := apiSvc.EdgesApi.AddEdge(ctx, addGwInput, nil)
@@ -102,6 +107,7 @@ func (rt _resourceGateway) resourceGatewayUpdate(
 		One2OneNatRules:        gwInput.One2OneNatRules,
 		PortForwardingNatRules: gwInput.PortForwardingNatRules,
 		Interfaces:             &gwInput.Interfaces,
+		ClientConfiguration:    gwInput.ClientConfiguration,
 	}
 
 	lock := utils.Mutex.Get(gwInput.Id)
@@ -151,7 +157,9 @@ type _resourceGateway struct {
 
 func resourceGateway() *schema.Resource {
 	swaggerSchema, binder, inputBinder := ReflectSchema(swagger.Edge{}, Cfg{
-		"name": {Schema: schema.Schema{Required: true}},
+		"name":        {Schema: &schema.Schema{Required: true}},
+		"is_template": {Schema: &schema.Schema{Optional: true, ForceNew: true, Default: false}},
+		"interfaces":  {Schema: &schema.Schema{Computed: true}},
 	})
 
 	rt := _resourceGateway{Binder: binder, InputBinder: inputBinder}

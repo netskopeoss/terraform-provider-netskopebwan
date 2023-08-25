@@ -1,11 +1,13 @@
 package bwan
 
 import (
+	"reflect"
+	"strings"
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"reflect"
-	"testing"
 )
 
 type Sanity struct {
@@ -61,7 +63,7 @@ var ArrayObjectSchema = ms{
 		Type:     schema.TypeList,
 		Elem:     &schema.Resource{Schema: NestedObjectChildSchema},
 		Optional: true,
-		Computed: true,
+		Computed: false,
 	},
 }
 
@@ -86,7 +88,7 @@ var ArrayPrimitiveSchema = ms{
 		Type:     schema.TypeList,
 		Elem:     &schema.Schema{Type: schema.TypeString},
 		Optional: true,
-		Computed: true,
+		Computed: false,
 	},
 }
 
@@ -122,6 +124,10 @@ var EmbedObjectSchema = ms{
 	},
 }
 
+type ComplexObject struct {
+	Sub []ArrayObject
+}
+
 type i = interface{}
 type m = map[string]i
 type ms = map[string]*schema.Schema
@@ -152,7 +158,7 @@ func TestRoundTrip(t *testing.T) {
 	tests := []struct {
 		name string
 		t    interface{}
-		out  interface{}
+		out  map[string]interface{}
 	}{
 		{"sanity", Sanity{}, m{
 			"string":  "",
@@ -212,10 +218,15 @@ func TestRoundTrip(t *testing.T) {
 		}, m{
 			"strings": nil,
 		}},
-		{"array primitives", ArrayPrimitive{
+		{"array primitives EINN", ArrayPrimitive{
 			Strings: []string{},
 		}, m{
 			"strings": []i{},
+		}},
+		{"array primitives NOTSYMMETRICAL", ArrayPrimitive{
+			Strings: []string{},
+		}, m{
+			"strings": nil,
 		}},
 		{"array primitives", ArrayPrimitive{
 			Strings: []string{""},
@@ -237,7 +248,12 @@ func TestRoundTrip(t *testing.T) {
 		}, m{
 			"children": nil,
 		}},
-		{"array object", ArrayObject{
+		{"array object NOTSYMMETRICAL", ArrayObject{
+			Children: []NestedObjectChild{},
+		}, m{
+			"children": nil,
+		}},
+		{"array object EINN", ArrayObject{
 			Children: []NestedObjectChild{},
 		}, m{
 			"children": []i{},
@@ -281,10 +297,36 @@ func TestRoundTrip(t *testing.T) {
 			"parent_id": "",
 			"id":        "id",
 		}},
+		{"complex nesting", ComplexObject{
+			Sub: []ArrayObject{
+				{
+					Children: []NestedObjectChild{{Id: "1"}, {Id: "2"}},
+				},
+				{
+					Children: nil,
+				},
+			},
+		}, m{"sub": []i{
+			m{"children": []i{m{"id": "1"}, m{"id": "2"}}},
+			m{"children": nil},
+		}}},
 	}
 	for _, test := range tests {
+		test := test
+
 		t.Run(test.name, func(t *testing.T) {
-			_, bm, ibm := ReflectSchema(test.t, Cfg{})
+			t.Parallel()
+
+			isEmptyNotNil := strings.Contains(test.name, "EINN")
+			isNotSymetrical := strings.Contains(test.name, "NOTSYMMETRICAL")
+
+			cfg := Cfg{}
+			if isEmptyNotNil {
+				c := cfg["*"]
+				c.EmptyIsNotNull = true
+				cfg["*"] = c
+			}
+			_, bm, ibm := ReflectSchema(test.t, cfg)
 
 			ma, err := ApplyBinderMap(bm, reflect.ValueOf(test.t))
 			require.NoError(t, err)
@@ -297,7 +339,12 @@ func TestRoundTrip(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			assert.Equal(t, test.t, v.Interface())
+			if isNotSymetrical {
+				return
+			}
+
+			av := v.Interface()
+			assert.EqualValues(t, test.t, av)
 		})
 	}
 }

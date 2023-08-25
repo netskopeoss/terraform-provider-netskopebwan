@@ -62,7 +62,7 @@ type dataSourceGatewayNatInput struct {
 
 func dataSourceGatewayNat() *schema.Resource {
 	swaggerSchema, binder, inputBinder := ReflectSchema(dataSourceGatewayNatInput{}, Cfg{
-		"gateway_id": {Schema: schema.Schema{Required: true}},
+		"gateway_id": {Schema: &schema.Schema{Required: true}},
 	})
 
 	rt := _dataSourceGatewayNat{Binder: binder,
@@ -86,8 +86,8 @@ func dataSourceGatewayNat() *schema.Resource {
 
 func dataSourceGatewayPortForward() *schema.Resource {
 	swaggerSchema, binder, inputBinder := ReflectSchema(dataSourceGatewayNatInput{}, Cfg{
-		"gateway_id": {Schema: schema.Schema{Required: true}},
-		"name":       {Schema: schema.Schema{Required: true}},
+		"gateway_id": {Schema: &schema.Schema{Required: true}},
+		"name":       {Schema: &schema.Schema{Required: true}},
 	})
 
 	rt := _dataSourceGatewayNat{Binder: binder,

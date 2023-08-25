@@ -24,6 +24,7 @@ func (rt _resourcePolicy) resourcePolicyCreate(
 		Name:   policyInput.Name,
 		Hubs:   policyInput.Hubs,
 		Config: policyInput.Config,
+		Type_:  policyInput.Type_,
 	}
 
 	policy, _, err := apiSvc.PoliciesApi.AddPolicy(ctx, addPolicyInput, nil)
@@ -128,7 +129,11 @@ type _resourcePolicy struct {
 
 func resourcePolicy() *schema.Resource {
 	swaggerSchema, binder, inputBinder := ReflectSchema(swagger.Policy{}, Cfg{
-		"name": {Schema: schema.Schema{Required: true}},
+		"name": {Schema: &schema.Schema{Required: true}},
+		"config.pcfg_general_settings.pcfg_netflow.pcfg_nf_exporter_settings.nf_collector_settings": {
+			Schema:         &schema.Schema{Computed: true},
+			EmptyIsNotNull: true,
+		},
 	})
 
 	rt := _resourcePolicy{Binder: binder, InputBinder: inputBinder}

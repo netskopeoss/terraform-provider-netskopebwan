@@ -127,7 +127,7 @@ type _resourceUser struct {
 func resourceUser() *schema.Resource {
 	swaggerSchema, binder, swaggerInputBinder := ReflectSchema(swagger.User{}, Cfg{
 		"name": {
-			Schema: schema.Schema{
+			Schema: &schema.Schema{
 				Required: true,
 			},
 		},

@@ -29,7 +29,20 @@ func ToSnakeCase(field reflect.StructField) string {
 }
 
 type Cfg map[string]struct {
-	schema.Schema
+	*schema.Schema
+	EmptyIsNotNull bool
+}
+
+func (c Cfg) EmptyIsNotNull(k string) bool {
+	if c[k].EmptyIsNotNull {
+		return true
+	}
+
+	if c["*"].EmptyIsNotNull {
+		return true
+	}
+
+	return false
 }
 
 func ReflectSchema(v interface{}, cfg Cfg) (map[string]*schema.Schema, []FieldBinder, []FieldBinder) {
@@ -84,18 +97,28 @@ func applyBinderInput(t reflect.Type, bm []FieldBinder, get func(k string) (inte
 			panic(fmt.Sprintf("field %v does not exist on %v", b.FieldName, nv.Type().String()))
 		}
 
-		mv, ok := get(b.MapKey)
-		if !ok || mv == nil {
-			continue
+		mv, _ := get(b.MapKey)
+		var mvv reflect.Value
+		if mv == nil {
+			switch f.Type().Kind() {
+			case reflect.Array, reflect.Slice:
+				mvv = reflect.Zero(f.Type())
+			default:
+				continue
+			}
+		} else {
+			mvv = reflect.ValueOf(mv)
 		}
 
-		iv, err := b.Func(reflect.ValueOf(mv))
+		iv, err := b.Func(mvv)
 		if err != nil {
 			return reflect.Value{}, err
 		}
+
 		if iv == nil {
 			continue
 		}
+
 		v := reflect.ValueOf(iv)
 
 		switch f.Type().Kind() {
@@ -221,21 +244,31 @@ func reflectSchemaType(path string, t reflect.Type, cfg Cfg) (map[string]*schema
 }
 
 func reflectSchemaField(path string, cfg Cfg, t reflect.Type, extra, allowDirectObject bool) (*schema.Schema, BinderFunc, BinderFunc) {
-	fcfg, ok := cfg[path]
+	fcfg := cfg[path]
 
 	s := fcfg.Schema
+	hasSchema := s != nil
+	if s == nil {
+		s = &schema.Schema{}
+	}
+
 	var b, ib BinderFunc
 	s.Type, s.Elem, b, ib = reflectSchemaFieldType(path, t, cfg, allowDirectObject)
-	if extra && !ok {
+	if extra && !hasSchema {
 		s.Optional = true
-		s.Computed = true
+		if s.Type != schema.TypeList {
+			s.Computed = true
+		}
+		if path == "id" {
+			s.Computed = true
+		}
 	}
 
 	if s.Type == schema.TypeSet {
 		s.MaxItems = 1
 	}
 
-	return &s, b, ib
+	return s, b, ib
 }
 
 type BinderFunc func(v reflect.Value) (interface{}, error)
@@ -306,6 +339,10 @@ func reflectSchemaFieldType(path string, t reflect.Type, cfg Cfg, allowDirectObj
 
 		return schema.TypeList, innerType, func(v reflect.Value) (interface{}, error) {
 				if v.IsZero() {
+					v = reflect.MakeSlice(t, 0, 0)
+				}
+
+				if v.Len() == 0 && !cfg.EmptyIsNotNull(path) {
 					return nil, nil
 				}
 
@@ -321,11 +358,17 @@ func reflectSchemaFieldType(path string, t reflect.Type, cfg Cfg, allowDirectObj
 
 				return a, nil
 			}, func(v reflect.Value) (interface{}, error) {
-				if v.IsZero() {
+				var av []interface{}
+				if !v.IsZero() {
+					av = v.Interface().([]interface{})
+				} else {
+					av = []interface{}{}
+				}
+
+				if len(av) == 0 && !cfg.EmptyIsNotNull(path) {
 					return nil, nil
 				}
 
-				av := v.Interface().([]interface{})
 				nv := reflect.MakeSlice(t, 0, len(av))
 
 				for _, iv := range av {
@@ -344,9 +387,17 @@ func reflectSchemaFieldType(path string, t reflect.Type, cfg Cfg, allowDirectObj
 			return schema.TypeString, nil, func(v reflect.Value) (interface{}, error) {
 					t := v.Interface().(time.Time)
 
+					if t.IsZero() {
+						return nil, nil
+					}
+
 					return t.Format(time.RFC3339), nil
 				}, func(v reflect.Value) (interface{}, error) {
 					sv := v.Interface().(string)
+
+					if sv == "" {
+						return time.Time{}, nil
+					}
 
 					return time.Parse(time.RFC3339, sv)
 				}

@@ -186,9 +186,9 @@ type resourceGatewayInterfaceInput struct {
 
 func resourceGatewayInterface() *schema.Resource {
 	swaggerSchema, binder, inputBinder := ReflectSchema(resourceGatewayInterfaceInput{}, Cfg{
-		"name":        {Schema: schema.Schema{Required: true}},
-		"gateway_id":  {Schema: schema.Schema{Required: true}},
-		"is_disabled": {Schema: schema.Schema{Required: true}},
+		"name":        {Schema: &schema.Schema{Required: true}},
+		"gateway_id":  {Schema: &schema.Schema{Required: true}},
+		"is_disabled": {Schema: &schema.Schema{Required: true}},
 	})
 
 	rt := _resourceGatewayInterface{Binder: binder, InputBinder: inputBinder}

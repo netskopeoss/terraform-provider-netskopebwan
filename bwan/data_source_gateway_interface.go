@@ -60,8 +60,8 @@ type dataSourceGatewayInterfaceInput struct {
 
 func dataSourceGatewayInterface() *schema.Resource {
 	swaggerSchema, binder, inputBinder := ReflectSchema(dataSourceGatewayInterfaceInput{}, Cfg{
-		"name":       {Schema: schema.Schema{Required: true}},
-		"gateway_id": {Schema: schema.Schema{Required: true}},
+		"name":       {Schema: &schema.Schema{Required: true}},
+		"gateway_id": {Schema: &schema.Schema{Required: true}},
 	})
 
 	rt := _dataSourceGatewayInterface{Binder: binder, InputBinder: inputBinder}
