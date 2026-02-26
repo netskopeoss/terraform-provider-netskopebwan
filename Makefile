@@ -2,7 +2,7 @@ HOSTNAME=github.com
 NAMESPACE=netskopeoss
 NAME=netskopebwan
 BINARY=terraform-provider-${NAME}
-VERSION=0.0.2
+VERSION=0.0.3
 OS_ARCH=$(shell terraform -version | (grep ^on) | sed 's/on //' )
 
 default: install

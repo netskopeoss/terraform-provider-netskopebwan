@@ -1,6 +1,6 @@
 module github.com/netskopeoss/terraform-provider-netskopebwan
 
-go 1.25.0
+go 1.26
 
 require (
 	github.com/antihax/optional v1.0.0
