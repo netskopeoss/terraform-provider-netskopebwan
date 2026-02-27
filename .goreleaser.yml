@@ -1,8 +1,8 @@
 version: 2
 # Visit https://goreleaser.com for documentation on how to customize this
 # behavior.
-env:
-  - COSIGN_YES=true
+# env:
+#   - COSIGN_YES=true
 
 before:
   hooks:
@@ -66,16 +66,16 @@ signs:
       - "--detach-sign"
       - "${artifact}"
     artifacts: checksum
-  - id: cosign
-    signature: "${artifact}.sbom.json.bundle"
-    cmd: cosign
-    args:
-      - sign-blob
-      - --new-bundle-format
-      - --bundle
-      - "${signature}"
-      - "${artifact}"
-    artifacts: checksum
+  # - id: cosign
+  #   signature: "${artifact}.sbom.json.bundle"
+  #   cmd: cosign
+  #   args:
+  #     - sign-blob
+  #     - --new-bundle-format
+  #     - --bundle
+  #     - "${signature}"
+  #     - "${artifact}"
+  #   artifacts: checksum
 
 release:
   extra_files:
