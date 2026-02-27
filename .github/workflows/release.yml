@@ -38,4 +38,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ env.GPG_FINGERPRINT }}
         run: |
-          GPG_TTY=$(tty) goreleaser release --clean
+          goreleaser release --clean

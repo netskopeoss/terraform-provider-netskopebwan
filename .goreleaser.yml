@@ -54,7 +54,7 @@ checksum:
 
 signs:
   - id: "gpg"
-    cmd: "gpg"
+    # cmd: "gpg"
     args:
       # if you are using this in a GitHub action or some other automated pipeline, you
       # need to pass the batch flag to indicate its not interactive.
