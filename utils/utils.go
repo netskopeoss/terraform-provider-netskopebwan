@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	swagger "github.com/infiotinc/netskopebwan-go-client"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/swagger"
 )
 
 const NAT = "1:1_NAT"

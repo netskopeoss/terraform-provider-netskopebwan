@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	swagger "github.com/infiotinc/netskopebwan-go-client"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/swagger"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -12,7 +12,8 @@ import (
 
 func (rt _dataSourceGatewayBgp) getExistingBgpPeer(
 	bgpPeers []swagger.EdgeBgpConfiguration,
-	peer swagger.EdgeBgpConfiguration) (index int) {
+	peer swagger.EdgeBgpConfiguration,
+) (index int) {
 	for index, bgp := range bgpPeers {
 		if bgp.Neighbor == peer.Neighbor {
 			return index
@@ -23,8 +24,8 @@ func (rt _dataSourceGatewayBgp) getExistingBgpPeer(
 
 func (rt _dataSourceGatewayBgp) dataSourceGatewayBgpRead(
 	ctx context.Context, d *schema.ResourceData,
-	m interface{}) diag.Diagnostics {
-
+	m interface{},
+) diag.Diagnostics {
 	var diags diag.Diagnostics
 	var bgpConfig swagger.EdgeBgpConfiguration
 	var err error
@@ -53,7 +54,6 @@ func (rt _dataSourceGatewayBgp) dataSourceGatewayBgpRead(
 	}
 
 	err = ApplyBinderResourceData(rt.Binder, d, bgpConfig)
-
 	if err != nil {
 		return diag.FromErr(err)
 	}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	swagger "github.com/infiotinc/netskopebwan-go-client"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/swagger"
 	"github.com/netskopeoss/terraform-provider-netskopebwan/utils"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -12,7 +12,8 @@ import (
 )
 
 func (rt _resourceGateway) resourceGatewayCreate(
-	ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	ctx context.Context, d *schema.ResourceData, m interface{},
+) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	apiSvc := m.(*swagger.APIClient)
@@ -28,6 +29,7 @@ func (rt _resourceGateway) resourceGatewayCreate(
 		AssignedPolicy: gwInput.AssignedPolicy,
 		Description:    gwInput.Description,
 		Serialnumber:   gwInput.Serialnumber,
+		Managed:        gwInput.Managed,
 	}
 
 	gateway, _, err := apiSvc.EdgesApi.AddEdge(ctx, addGwInput, nil)
@@ -39,17 +41,16 @@ func (rt _resourceGateway) resourceGatewayCreate(
 	}
 
 	err = ApplyBinderResourceData(rt.Binder, d, gateway)
-
 	if err != nil {
 		return diag.FromErr(err)
 	}
 	d.SetId(gateway.Id)
 	return diags
-
 }
 
 func (rt _resourceGateway) resourceGatewayRead(
-	ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	ctx context.Context, d *schema.ResourceData, m interface{},
+) diag.Diagnostics {
 	var diags diag.Diagnostics
 	var err error
 
@@ -74,7 +75,8 @@ func (rt _resourceGateway) resourceGatewayRead(
 }
 
 func (rt _resourceGateway) resourceGatewayUpdate(
-	ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	ctx context.Context, d *schema.ResourceData, m interface{},
+) diag.Diagnostics {
 	var diags diag.Diagnostics
 	var err error
 
@@ -102,13 +104,13 @@ func (rt _resourceGateway) resourceGatewayUpdate(
 		One2OneNatRules:        gwInput.One2OneNatRules,
 		PortForwardingNatRules: gwInput.PortForwardingNatRules,
 		Interfaces:             &gwInput.Interfaces,
+		Managed:                gwInput.Managed,
 	}
 
 	lock := utils.Mutex.Get(gwInput.Id)
 	lock.Lock()
 	defer lock.Unlock()
 	gateway, _, err := apiSvc.EdgesApi.UpdateEdgeById(ctx, addGwInput, gwInput.Id, nil)
-
 	if err != nil {
 		if serr, ok := err.(swagger.GenericSwaggerError); ok {
 			return diag.FromErr(fmt.Errorf("%s", serr.Body()))
@@ -117,17 +119,16 @@ func (rt _resourceGateway) resourceGatewayUpdate(
 	}
 
 	err = ApplyBinderResourceData(rt.Binder, d, gateway)
-
 	if err != nil {
 		return diag.FromErr(err)
 	}
 	d.SetId(gateway.Id)
 	return diags
-
 }
 
 func (rt _resourceGateway) resourceGatewayDelete(
-	ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	ctx context.Context, d *schema.ResourceData, m interface{},
+) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	apiSvc := m.(*swagger.APIClient)

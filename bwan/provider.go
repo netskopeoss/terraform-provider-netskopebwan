@@ -2,7 +2,7 @@ package bwan
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	swagger "github.com/infiotinc/netskopebwan-go-client"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/swagger"
 )
 
 // Provider - Netskope APIv2 Provider
