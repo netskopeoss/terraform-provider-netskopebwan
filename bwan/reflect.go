@@ -10,8 +10,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
-var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
+var (
+	matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
+	matchAllCap   = regexp.MustCompile("([a-z0-9])([A-Z])")
+)
 
 const SchemaStruct = schema.ValueType(-1)
 
@@ -352,7 +354,7 @@ func reflectSchemaFieldType(path string, t reflect.Type, cfg Cfg, allowDirectObj
 				}
 		}
 
-		if t.PkgPath() == "github.com/infiotinc/netskopebwan-go-client" ||
+		if t.PkgPath() == "github.com/netskopeoss/terraform-provider-netskopebwan/swagger" ||
 			t.PkgPath() == "github.com/netskopeoss/terraform-provider-netskopebwan/bwan" ||
 			t.PkgPath() == "main" {
 			s, bm, ibm := reflectSchemaType(path, t, cfg)

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	swagger "github.com/infiotinc/netskopebwan-go-client"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/swagger"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
