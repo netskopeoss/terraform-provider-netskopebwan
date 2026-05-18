@@ -9,15 +9,17 @@
 package swagger
 
 type AddEdgeInput struct {
-	SourceTenantId string                       `json:"sourceTenantId,omitempty"`
-	SourceObjectId string                       `json:"sourceObjectId,omitempty"`
-	Model          *EdgeModel                   `json:"model,omitempty"`
-	Name           string                       `json:"name,omitempty"`
-	Description    string                       `json:"description,omitempty"`
-	Role           *EdgeRole                    `json:"role,omitempty"`
-	Serialnumber   string                       `json:"serialnumber,omitempty"`
-	AssignedPolicy *PolicyRef                   `json:"assignedPolicy,omitempty"`
-	IsTemplate     bool                         `json:"isTemplate,omitempty"`
+	SourceTenantId string `json:"sourceTenantId,omitempty"`
+	SourceObjectId string `json:"sourceObjectId,omitempty"`
+	Model *EdgeModel `json:"model,omitempty"`
+	Name string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	Role *EdgeRole `json:"role,omitempty"`
+	Serialnumber string `json:"serialnumber,omitempty"`
+	AssignedPolicy *PolicyRef `json:"assignedPolicy,omitempty"`
+	IsTemplate bool `json:"isTemplate,omitempty"`
 	Ipv4PoolRanges *[]ClientIpv4PoolRangesInner `json:"ipv4PoolRanges,omitempty"`
-	Managed        bool                         `json:"managed,omitempty"`
+	Managed bool `json:"managed,omitempty"`
+	// List of labels to be associated with the edge
+	Labels []string `json:"labels,omitempty"`
 }

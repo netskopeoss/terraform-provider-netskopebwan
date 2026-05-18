@@ -4106,6 +4106,11 @@ components:
           $ref: "#/components/schemas/ObjectRef"
         managed:
           type: boolean
+        labels:
+          type: array
+          description: List of labels to be associated with the edge
+          items:
+            type: string
       example:
         interfaces:
         - addresses:
@@ -5528,6 +5533,11 @@ components:
           $ref: "#/components/schemas/ClientIpv4PoolRanges"
         managed:
           type: boolean
+        labels:
+          type: array
+          description: List of labels to be associated with the edge
+          items:
+            type: string
       allOf:
       - $ref: "#/components/schemas/CloneIdInput"
     UpdateEdgeInput:
@@ -5580,6 +5590,11 @@ components:
           $ref: "#/components/schemas/ClientConfiguration"
         managed:
           type: boolean
+        labels:
+          type: array
+          description: List of labels to be associated with the edge
+          items:
+            type: string
     EdgeRef:
       type: object
       properties:

@@ -30,6 +30,7 @@ Name | Type | Description | Notes
 **ClientConfiguration** | [***ClientConfiguration**](ClientConfiguration.md) |  | [optional] [default to null]
 **Source** | [***ObjectRef**](ObjectRef.md) |  | [optional] [default to null]
 **Managed** | **bool** |  | [optional] [default to null]
+**Labels** | **[]string** | List of labels to be associated with the edge | [optional] [default to null]
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

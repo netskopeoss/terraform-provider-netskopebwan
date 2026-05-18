@@ -30,6 +30,7 @@ func (rt _resourceGateway) resourceGatewayCreate(
 		Description:    gwInput.Description,
 		Serialnumber:   gwInput.Serialnumber,
 		Managed:        gwInput.Managed,
+		Labels:         gwInput.Labels,
 	}
 
 	gateway, _, err := apiSvc.EdgesApi.AddEdge(ctx, addGwInput, nil)
@@ -105,6 +106,7 @@ func (rt _resourceGateway) resourceGatewayUpdate(
 		PortForwardingNatRules: gwInput.PortForwardingNatRules,
 		Interfaces:             &gwInput.Interfaces,
 		Managed:                gwInput.Managed,
+		Labels:                 gwInput.Labels,
 	}
 
 	lock := utils.Mutex.Get(gwInput.Id)

@@ -12,21 +12,23 @@ type UpdateEdgeInput struct {
 	// The display name of the edge
 	Name string `json:"name,omitempty"`
 	// Additional notes about the edge
-	Description string    `json:"description,omitempty"`
-	Role        *EdgeRole `json:"role,omitempty"`
+	Description string `json:"description,omitempty"`
+	Role *EdgeRole `json:"role,omitempty"`
 	// Serial number of the edge
 	Serialnumber string `json:"serialnumber,omitempty"`
 	// Version of the software manifest assigned to this edge
 	Swversion string `json:"swversion,omitempty"`
 	// URL of the software manifest assined to this edge
-	Swmanifest             string                 `json:"swmanifest,omitempty"`
-	Psk                    string                 `json:"psk,omitempty"`
-	BgpConfiguration       []EdgeBgpConfiguration `json:"bgpConfiguration,omitempty"`
-	StaticRoutes           []StaticRoute          `json:"staticRoutes,omitempty"`
-	AssignedPolicy         *PolicyRef             `json:"assignedPolicy,omitempty"`
-	One2OneNatRules        []InboundNatRule       `json:"one2OneNatRules,omitempty"`
-	PortForwardingNatRules []InboundNatRule       `json:"portForwardingNatRules,omitempty"`
-	Interfaces             *[]InterfaceSettings   `json:"interfaces,omitempty"`
-	ClientConfiguration    *ClientConfiguration   `json:"clientConfiguration,omitempty"`
-	Managed                bool                   `json:"managed,omitempty"`
+	Swmanifest string `json:"swmanifest,omitempty"`
+	Psk string `json:"psk,omitempty"`
+	BgpConfiguration []EdgeBgpConfiguration `json:"bgpConfiguration,omitempty"`
+	StaticRoutes []StaticRoute `json:"staticRoutes,omitempty"`
+	AssignedPolicy *PolicyRef `json:"assignedPolicy,omitempty"`
+	One2OneNatRules []InboundNatRule `json:"one2OneNatRules,omitempty"`
+	PortForwardingNatRules []InboundNatRule `json:"portForwardingNatRules,omitempty"`
+	Interfaces *[]InterfaceSettings `json:"interfaces,omitempty"`
+	ClientConfiguration *ClientConfiguration `json:"clientConfiguration,omitempty"`
+	Managed bool `json:"managed,omitempty"`
+	// List of labels to be associated with the edge
+	Labels []string `json:"labels,omitempty"`
 }

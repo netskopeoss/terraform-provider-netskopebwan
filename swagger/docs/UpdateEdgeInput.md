@@ -17,6 +17,8 @@ Name | Type | Description | Notes
 **PortForwardingNatRules** | [**[]InboundNatRule**](InboundNatRule.md) |  | [optional] [default to null]
 **Interfaces** | [***[]InterfaceSettings**](array.md) |  | [optional] [default to null]
 **ClientConfiguration** | [***ClientConfiguration**](ClientConfiguration.md) |  | [optional] [default to null]
+**Managed** | **bool** |  | [optional] [default to null]
+**Labels** | **[]string** | List of labels to be associated with the edge | [optional] [default to null]
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 
