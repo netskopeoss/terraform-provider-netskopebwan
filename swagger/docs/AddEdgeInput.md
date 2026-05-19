@@ -13,6 +13,8 @@ Name | Type | Description | Notes
 **AssignedPolicy** | [***PolicyRef**](PolicyRef.md) |  | [optional] [default to null]
 **IsTemplate** | **bool** |  | [optional] [default to null]
 **Ipv4PoolRanges** | [***[]ClientIpv4PoolRangesInner**](array.md) |  | [optional] [default to null]
+**Managed** | **bool** |  | [optional] [default to null]
+**Labels** | **[]string** | List of labels to be associated with the edge | [optional] [default to null]
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 
