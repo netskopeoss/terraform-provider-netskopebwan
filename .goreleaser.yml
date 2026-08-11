@@ -84,12 +84,18 @@ signs:
   #   artifacts: checksum
 
 release:
-  # A tag whose version carries a semver prerelease — v1.2.3-alpha.1,
-  # v1.2.3-beta1, v1.2.3-rc.2, the tags `make release` accepts alongside plain
-  # ones — is published as a GitHub prerelease. That keeps it off the
-  # repository's "Latest release" and out of what `terraform init` picks
-  # without an explicit constraint, which is what an alpha should be.
-  prerelease: auto
+  # `prerelease: auto` deliberately absent. It would mark a release whose tag
+  # carries a semver prerelease — v1.2.3-alpha.1 — as a GitHub prerelease, which
+  # reads well on the releases page but stops the Terraform registry ingesting
+  # the version at all: v1.0.0-alpha.1 was published that way and never appeared
+  # in the registry, and the flag has to be taken off a release by hand before
+  # the registry will take it.
+  #
+  # Nothing is lost by leaving it off. What keeps an alpha from being installed
+  # by accident is the version itself: Terraform matches a prerelease only for an
+  # exact constraint, and the provider then refuses to configure until that
+  # version is acknowledged (see PreReleaseArgument in internal/provider). The
+  # flag was only ever cosmetic, and its cost is the release not existing.
   extra_files:
     - glob: "terraform-registry-manifest.json"
       name_template: "{{ .ProjectName }}_{{ .Version }}_manifest.json"

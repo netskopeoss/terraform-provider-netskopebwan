@@ -297,6 +297,12 @@ make release VERSION=v1.2.3           # a release
 make release VERSION=v1.2.3-alpha.1   # a prerelease
 ```
 
+A prerelease is published as an ordinary GitHub release, not a GitHub
+"pre-release". The flag would be nothing but cosmetic — Terraform installs a
+prerelease only for an exact version, and the provider refuses to configure until
+that version is acknowledged — and it stops the registry ingesting the version at
+all, which is how `v1.0.0-alpha.1` came to exist on GitHub and nowhere else.
+
 Nothing about that is undoable once the registry has picked the version up, so
 the target refuses to run on anything it is not sure about. It requires the
 version to be a `v`-prefixed semver, the working tree to be clean, the tag to be
