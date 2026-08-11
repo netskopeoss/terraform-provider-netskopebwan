@@ -1,0 +1,6 @@
+# This object's whole configuration is a JSON document the API declares no
+# shape for, so the resource is off until enable_raw_gateway_template is set on the
+# provider. That opts out of the provider's compatibility guarantees.
+resource "netskopebwan_gateway_template_raw" "example" {
+  device_config_raw = jsonencode({})
+}

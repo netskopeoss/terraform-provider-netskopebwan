@@ -1,0 +1,5 @@
+resource "netskopebwan_controller" "example" {
+  operator_nrn = "<operator_nrn>"
+  public_ipv4  = "<public_ipv4>"
+  version      = "<version>"
+}

@@ -47,6 +47,17 @@ type Definition struct {
 	Variant *Variant
 }
 
+// IdentityAttributes lists what it takes to address one of these objects: the
+// path placeholders of whatever it lives under, ending with its own id. Joined by
+// "/" that is also the resource's import ID, and the example generator documents
+// it from here so that what the docs tell a practitioner to type is what
+// ImportState parses.
+func (d Definition) IdentityAttributes() []string {
+	names := parentPlaceholders(d.Create.Path, d.Read.Path, d.Update.Path, d.Delete.Path)
+
+	return append(names, idAttribute)
+}
+
 // NewResource returns the factory the provider registers for def.
 func NewResource(def Definition) func() resource.Resource {
 	return func() resource.Resource {
@@ -276,7 +287,7 @@ func (r *genericResource) Delete(ctx context.Context, req resource.DeleteRequest
 func (r *genericResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	r.prepare(ctx)
 
-	names := r.identityAttributes()
+	names := r.def.IdentityAttributes()
 	parts := strings.Split(req.ID, "/")
 
 	if len(parts) != len(names) {
@@ -329,12 +340,6 @@ func (r *genericResource) ModifyPlan(ctx context.Context, req resource.ModifyPla
 			resp.RequiresReplace = resp.RequiresReplace.Append(path.Root(name))
 		}
 	}
-}
-
-func (r *genericResource) identityAttributes() []string {
-	names := parentPlaceholders(r.def.Create.Path, r.def.Read.Path, r.def.Update.Path, r.def.Delete.Path)
-
-	return append(names, idAttribute)
 }
 
 // write sends a create or update request and returns the document it answered

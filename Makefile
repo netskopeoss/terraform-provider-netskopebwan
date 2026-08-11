@@ -1,4 +1,4 @@
-.PHONY: help lint tfgen openapi provider resources-gen datasources-gen registry-gen mockgen terraform docs docs-check docs-html docs-serve tools generate test vet fmt-check terraform-check ci release
+.PHONY: help lint tfgen openapi provider resources-gen datasources-gen registry-gen mockgen terraform examples docs docs-check docs-html docs-serve tools generate test vet fmt-check terraform-check ci release
 
 # Variables
 GOPATH ?= $(HOME)/go
@@ -25,6 +25,7 @@ OUT_DIR := ./internal/gen
 REGISTRY_OUT := ./internal/registry/registry_gen.go
 MOCK_OUT := ./internal/bwanclient/mock
 DOCS_DIR := ./docs
+EXAMPLES_DIR := ./examples
 DOCS_HTML_DIR := ./docs_html
 TFGEN := $(TOOLS_BIN)/tfgen
 PORT ?= 8080
@@ -83,6 +84,7 @@ help:
 	@echo "  make terraform-check   - Fail if any example is not terraform fmt'd"
 	@echo "  make ci                - What CI runs: generate, checks, build"
 	@echo "  make terraform         - Format Terraform files"
+	@echo "  make examples          - Fill in missing usage examples"
 	@echo "  make docs              - Generate Terraform docs"
 	@echo "  make docs-check        - Fail if the committed docs are out of date"
 	@echo "  make docs-html         - Generate HTML docs"
@@ -180,9 +182,17 @@ provider-schema:
 	mkdir -p $$(dirname $(PROVIDER_SCHEMA_FILE))
 	go run ./tools/tfdocs schema -out $(PROVIDER_SCHEMA_FILE)
 
+# Fill in the usage example on every documentation page that has none. The
+# examples are generated from the provider's own schema, and a file already on
+# disk is left alone, so a hand-written example is never overwritten by one of
+# these. They are committed, because docs/ is generated from them.
+examples:
+	@echo "Generating examples..."
+	go run ./tools/tfdocs examples -out $(EXAMPLES_DIR)
+
 # Generate Terraform docs. The schema comes from the provider itself, so
 # tfplugindocs neither builds it nor reaches the registry for it.
-docs: provider-schema
+docs: provider-schema examples
 	@echo "Generating Terraform documentation..."
 	mkdir -p $(DOCS_DIR)
 	$(TFPLUGINDOCS) generate --provider-name $(PROVIDER_NAME) \

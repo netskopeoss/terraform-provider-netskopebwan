@@ -73,3 +73,15 @@ Read-Only:
 
 - `id` (String)
 - `nrn` (String)
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+# This object lives under another, so importing it takes the ids of both, in
+# the order the API's own path has them: group_id, id.
+terraform import netskopebwan_address_object.example <group_id>/<id>
+```

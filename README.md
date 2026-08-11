@@ -147,6 +147,7 @@ make provider         # the plugin binary
 make test             # tests, with the race detector
 make lint
 make terraform        # format the examples
+make examples         # fill in any page's missing usage example
 make docs             # the registry documentation, markdown
 make docs-check       # fail if the committed docs are out of date
 make docs-html        # the same thing as a browsable site
@@ -157,8 +158,12 @@ make ci               # everything above, in the order CI runs it
 `make generate` has to come first in a fresh checkout: the packages `main.go`
 imports do not exist until it has run, so nothing compiles before it.
 
-`make docs` produces what the registry consumes, which is markdown. `docs-html`
-renders that into a site with a sidebar, a filter box and light and dark themes,
+`make docs` produces what the registry consumes, which is markdown. The usage
+example and import command on each page come from `examples/`, and `make
+examples` writes one for every object that has none — from the provider's own
+schema, so an example is made of arguments that exist. It never overwrites a file
+that is already there, which is how an object worth explaining properly gets a
+hand-written example instead. `docs-html` renders that into a site with a sidebar, a filter box and light and dark themes,
 because 92 pages of raw markdown in a browser is barely better than reading the
 files. `docs-serve` builds it and serves it, and takes a `PORT`.
 
@@ -272,18 +277,6 @@ argument to set — Terraform never gets as far as applying it.
 `*_raw` attribute has to be gated, and a gated object has to be suffixed so the
 plain name stays free. An opaque *value* — a credentials blob, an audit diff — does
 not make an object raw, because there is nothing better to roll out for it.
-
-## What is not exposed
-
-- **Site commands.** Running a command is an action, not a managed object.
-- **A client's `device_config_raw`.** Deliberately dropped. Note the spec marks it
-  required on `POST /clients`, so the API rejects creating a client until that
-  changes; reading and updating one works.
-- **A tenant's `has_active_network`.** Read-only status, deliberately dropped.
-- **Gateway sub-actions** (activation tokens, exec, passwords, telemetry) and the
-  other read-only report endpoints that have no object behind them.
-- **The shorthand form of a `oneOf` that mixes an object with a scalar.** Only the
-  object form is exposed; it can always express the shorthand too.
 
 ## Releasing
 
