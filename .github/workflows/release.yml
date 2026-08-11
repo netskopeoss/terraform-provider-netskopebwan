@@ -55,10 +55,14 @@ jobs:
 
       # Installed outside the workspace: goreleaser refuses to release from a
       # dirty tree, and an untracked binary in the repo would read as dirty.
+      #
+      # GOBIN is set on the command and not in `env:`, because every step here
+      # runs through the devenv shell and its enterShell exports a GOBIN of its
+      # own — pointing into the workspace, for the tfgen it builds. A step-level
+      # `env:` is applied before that export and loses to it, which installed
+      # goreleaser somewhere this workflow then could not find.
       - name: Install GoReleaser
-        env:
-          GOBIN: ${{ runner.temp }}/bin
-        run: go install github.com/goreleaser/goreleaser/v2@latest
+        run: GOBIN=${{ runner.temp }}/bin go install github.com/goreleaser/goreleaser/v2@latest
 
       - name: Run GoReleaser
         env:
