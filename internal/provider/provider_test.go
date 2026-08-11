@@ -11,7 +11,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/stretchr/testify/require"
 
 	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/genresource"
@@ -213,12 +215,112 @@ func TestProviderWarnsThatItIsAlpha(t *testing.T) {
 	readme, err := os.ReadFile(filepath.Join("..", "..", "README.md"))
 	require.NoError(t, err)
 
-	// The README wraps the warning across lines and quotes it as a callout, so it
-	// is the words that have to match rather than the layout.
-	prose := strings.Join(strings.Fields(strings.ReplaceAll(string(readme), ">", " ")), " ")
+	// The README wraps the warning across lines, quotes it as a callout and marks
+	// up the arguments it names, so it is the words that have to match rather than
+	// the layout. Only the quoting is stripped, not every ">": the warning names a
+	// "~>" constraint.
+	lines := strings.Split(string(readme), "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimPrefix(strings.TrimSpace(line), "> ")
+	}
+
+	prose := strings.Join(strings.Fields(strings.ReplaceAll(strings.Join(lines, " "), "`", "")), " ")
 
 	require.Contains(t, prose, AlphaHeadline)
 	require.Contains(t, prose, AlphaDetail)
+}
+
+// configure runs Configure against a provider stamped with version, with the
+// prerelease acknowledgement set to acknowledged (empty meaning unset).
+func configure(t *testing.T, version, acknowledged string) *provider.ConfigureResponse {
+	t.Helper()
+
+	ctx := context.Background()
+	prov := New(version)()
+
+	schemaResp := &provider.SchemaResponse{}
+	prov.Schema(ctx, provider.SchemaRequest{}, schemaResp)
+	require.False(t, schemaResp.Diagnostics.HasError(), "%v", schemaResp.Diagnostics)
+
+	object, ok := schemaResp.Schema.Type().TerraformType(ctx).(tftypes.Object)
+	require.True(t, ok)
+
+	members := map[string]tftypes.Value{}
+
+	for name, attributeType := range object.AttributeTypes {
+		members[name] = tftypes.NewValue(attributeType, nil)
+	}
+
+	if acknowledged != "" {
+		members[PreReleaseArgument] = tftypes.NewValue(tftypes.String, acknowledged)
+	}
+
+	// The endpoint and token come from the environment, so a configuration that
+	// gets past the gate reaches the checks after it rather than stopping on
+	// arguments this test is not about.
+	t.Setenv("BWAN_ENDPOINT", "https://tenant.example.com")
+	t.Setenv("BWAN_TOKEN", "token")
+
+	resp := &provider.ConfigureResponse{}
+	prov.Configure(ctx, provider.ConfigureRequest{
+		Config: tfsdk.Config{Schema: schemaResp.Schema, Raw: tftypes.NewValue(object, members)},
+	}, resp)
+
+	return resp
+}
+
+// TestPreReleaseHasToBeAcknowledged covers the gate on a prerelease build: it
+// refuses to configure until the configuration names the version it is running,
+// which is the version the practitioner is told about in the error rather than in
+// the generated documentation, where no tag exists yet to name.
+func TestPreReleaseHasToBeAcknowledged(t *testing.T) {
+	unacknowledged := configure(t, "1.0.0-alpha.1", "")
+
+	require.True(t, unacknowledged.Diagnostics.HasError())
+	require.Equal(t, "This provider is a prerelease", unacknowledged.Diagnostics.Errors()[0].Summary())
+
+	detail := unacknowledged.Diagnostics.Errors()[0].Detail()
+	require.Contains(t, detail, "Version 1.0.0-alpha.1 is a prerelease")
+	require.Contains(t, detail, PreReleaseArgument+` = "1.0.0-alpha.1"`)
+	require.Contains(t, detail, `version = "~> 0.0"`, "the released line is the way out")
+	require.Nil(t, unacknowledged.ResourceData, "nothing is configured behind the gate")
+
+	// The right version opens the gate, and only that version.
+	acknowledged := configure(t, "1.0.0-alpha.1", "1.0.0-alpha.1")
+	require.False(t, acknowledged.Diagnostics.HasError(), "%v", acknowledged.Diagnostics)
+	require.NotNil(t, acknowledged.ResourceData)
+
+	// A v prefix and surrounding space are how the version is written elsewhere,
+	// so they are not worth an error.
+	require.False(t, configure(t, "1.0.0-alpha.1", " v1.0.0-alpha.1 ").Diagnostics.HasError())
+
+	stale := configure(t, "1.0.0-alpha.2", "1.0.0-alpha.1")
+	require.True(t, stale.Diagnostics.HasError())
+	require.Equal(t, "A different prerelease is acknowledged", stale.Diagnostics.Errors()[0].Summary())
+	require.Contains(t, stale.Diagnostics.Errors()[0].Detail(), "the provider being run is 1.0.0-alpha.2")
+}
+
+// TestReleasedVersionsAreNotGated keeps the gate off everything that is not a
+// prerelease: a released version, and a build from a working tree, which stamps
+// no version at all and is what the acceptance tests and dev overrides run.
+func TestReleasedVersionsAreNotGated(t *testing.T) {
+	released := configure(t, "1.0.0", "")
+	require.False(t, released.Diagnostics.HasError(), "%v", released.Diagnostics)
+	require.Empty(t, released.Diagnostics.Warnings())
+
+	development := configure(t, "dev", "")
+	require.False(t, development.Diagnostics.HasError(), "%v", development.Diagnostics)
+	require.Empty(t, development.Diagnostics.Warnings())
+
+	// An acknowledgement left behind after upgrading to a release is not an
+	// error, but it is not doing anything either.
+	upgraded := configure(t, "1.0.0", "1.0.0-alpha.1")
+	require.False(t, upgraded.Diagnostics.HasError(), "%v", upgraded.Diagnostics)
+	require.Len(t, upgraded.Diagnostics.Warnings(), 1)
+	require.Contains(t, upgraded.Diagnostics.Warnings()[0].Detail(), "does nothing here and can be removed")
+
+	// A development build says nothing about an argument it does not enforce.
+	require.Empty(t, configure(t, "dev", "1.0.0-alpha.1").Diagnostics.Warnings())
 }
 
 func TestProviderSchemaOffersAnOptInPerRawFeature(t *testing.T) {

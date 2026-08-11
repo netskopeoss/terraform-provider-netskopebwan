@@ -4,13 +4,15 @@ Terraform provider for Netskope Borderless WAN, generated from the BWAN v2
 OpenAPI document that the REST gateway itself serves.
 
 > [!WARNING]
-> **This provider is alpha software, and its schema is subject to change.** Its
-> resources, data sources and attributes are generated from the BWAN v2 OpenAPI
+> **The 1.x line is an alpha; use the released 0.x line for now.** 1.x resources,
+> data sources and attributes are generated from the BWAN v2 OpenAPI
 > specification, which is itself still changing, so any of them may be renamed,
-> reshaped or removed in any release — including without a major version bump —
-> and a configuration or state written against one version may need reworking for
-> the next. Pin an exact version, and do not rely on it for production
-> infrastructure yet.
+> reshaped or removed from one prerelease to the next, and a configuration or
+> state written against one may need reworking for the next. Until 1.0.0 is
+> released, ask for `version = "~> 0.0"`. Terraform installs a prerelease only for
+> an exact version, and a prerelease then refuses to configure until that same
+> version is acknowledged with the `enable_pre_release` argument, so nobody runs
+> the 1.x line by accident.
 
 Nothing here is written per resource. Adding an object to the provider means
 adding an entry to [`generator_config.yml`](generator_config.yml).
@@ -184,9 +186,31 @@ The provider is published as
 terraform {
   required_providers {
     netskopebwan = {
-      source = "netskopeoss/netskopebwan"
+      source  = "netskopeoss/netskopebwan"
+      version = "~> 0.0" # the released line; 1.x is still a prerelease
     }
   }
+}
+```
+
+Running a 1.x prerelease takes two steps, and both name the same version — a
+prerelease is not installed by `~>` or `>=`, and refuses to configure until the
+version it is running is acknowledged. Substitute whichever prerelease you mean;
+`terraform init` records what it installed in `.terraform.lock.hcl`, and an
+unacknowledged prerelease says which version it wants in the error it raises:
+
+```hcl
+terraform {
+  required_providers {
+    netskopebwan = {
+      source  = "netskopeoss/netskopebwan"
+      version = "= 1.0.0-alpha.1"
+    }
+  }
+}
+
+provider "netskopebwan" {
+  enable_pre_release = "1.0.0-alpha.1" # the same version, verbatim
 }
 ```
 

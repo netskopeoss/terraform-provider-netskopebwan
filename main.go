@@ -19,8 +19,10 @@ import (
 // required_providers block.
 const address = "registry.terraform.io/netskopeoss/netskopebwan"
 
-// version is stamped at build time; it only ends up in diagnostics and the
-// User-Agent header.
+// version is stamped at build time, by goreleaser, from the tag being released.
+// Besides diagnostics and the User-Agent header it decides whether this build
+// has to be acknowledged as a prerelease before it will configure, so a build
+// that stamps nothing — anything from a working tree — is never gated.
 var version = "dev"
 
 func main() {
