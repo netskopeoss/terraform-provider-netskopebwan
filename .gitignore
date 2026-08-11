@@ -45,6 +45,11 @@ bin/
 .go-version
 go.work.sum
 
+# Claude Code: the project settings and the command flows are committed, since
+# they describe this repository. Personal overrides and scratch state are not.
+/.claude/settings.local.json
+/.claude/.cc-writes/
+
 # IDE
 .vscode/
 .idea/

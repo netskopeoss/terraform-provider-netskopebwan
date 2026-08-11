@@ -336,3 +336,4 @@ lives in `PROVIDER_NAME` in the [`Makefile`](Makefile), `TypeName` in
 | `internal/tfschema` | a generated schema as a walkable model: request bodies, merging a response into state, and the shape a choice of forms takes |
 | `internal/genresource` | the resource and data source built from a schema plus its API calls |
 | `internal/provider` | provider arguments and registration |
+| `CLAUDE.md`, `.claude/commands` | what to know before changing any of the above, and the flows for adding an object, regenerating, chasing spec drift, checking a change and cutting a release |
