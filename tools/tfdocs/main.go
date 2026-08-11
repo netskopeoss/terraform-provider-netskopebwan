@@ -1,0 +1,247 @@
+// Command tfdocs produces the provider's documentation.
+//
+//	tfdocs schema  writes the provider's schema in the shape
+//	               `terraform providers schema -json` produces
+//	tfdocs html    renders the markdown tfplugindocs generated into a
+//	               browsable HTML site
+//
+// The schema step is what keeps generation offline: tfplugindocs can take that
+// file instead of discovering the schema for itself, so there is no terraform
+// binary, no provider installed into a plugin directory and no registry lookup.
+// The provider is started in process and asked for its schema over the same
+// protocol Terraform would use, so what is documented is what Terraform would see.
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+
+	"infiot.com/infiot/mgmt/tf-provider/internal/provider"
+)
+
+func main() {
+	if err := run(os.Args[1:]); err != nil {
+		fmt.Fprintln(os.Stderr, "tfdocs:", err)
+		os.Exit(1)
+	}
+}
+
+func run(args []string) error {
+	if len(args) == 0 {
+		return errors.New("expected a subcommand: schema or html")
+	}
+
+	switch args[0] {
+	case "schema":
+		return runSchema(args[1:])
+	case "html":
+		return runHTML(args[1:])
+	default:
+		return fmt.Errorf("unknown subcommand %q, expected schema or html", args[0])
+	}
+}
+
+func runSchema(args []string) error {
+	flags := flag.NewFlagSet("schema", flag.ExitOnError)
+	// tfplugindocs looks the schema up by the provider's short name, or by that name
+	// under the hashicorp namespace, and nothing else. The short name it is.
+	address := flags.String("address", "bwan", "the key the provider's schema is filed under")
+	version := flags.String("version", "dev", "the provider version to report")
+	out := flags.String("out", "", "path to write the schema JSON to")
+
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+
+	if *out == "" {
+		return errors.New("-out is required")
+	}
+
+	ctx := context.Background()
+
+	server := providerserver.NewProtocol6(provider.New(*version)())()
+
+	schema, err := server.GetProviderSchema(ctx, &tfprotov6.GetProviderSchemaRequest{})
+	if err != nil {
+		return fmt.Errorf("asking the provider for its schema: %w", err)
+	}
+
+	if diagnostics := errorsIn(schema.Diagnostics); diagnostics != nil {
+		return diagnostics
+	}
+
+	document := map[string]any{
+		"format_version": "1.0",
+		"provider_schemas": map[string]any{
+			*address: map[string]any{
+				"provider":            renderSchema(schema.Provider),
+				"resource_schemas":    renderSchemas(schema.ResourceSchemas),
+				"data_source_schemas": renderSchemas(schema.DataSourceSchemas),
+			},
+		},
+	}
+
+	encoded, err := json.MarshalIndent(document, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encoding the schema: %w", err)
+	}
+
+	if err := os.WriteFile(*out, append(encoded, '\n'), 0o600); err != nil {
+		return fmt.Errorf("writing %s: %w", *out, err)
+	}
+
+	return nil
+}
+
+func errorsIn(diagnostics []*tfprotov6.Diagnostic) error {
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Severity == tfprotov6.DiagnosticSeverityError {
+			return fmt.Errorf("%s: %s", diagnostic.Summary, diagnostic.Detail)
+		}
+	}
+
+	return nil
+}
+
+func renderSchemas(schemas map[string]*tfprotov6.Schema) map[string]any {
+	out := make(map[string]any, len(schemas))
+
+	for name, schema := range schemas {
+		out[name] = renderSchema(schema)
+	}
+
+	return out
+}
+
+func renderSchema(schema *tfprotov6.Schema) map[string]any {
+	if schema == nil {
+		return nil
+	}
+
+	return map[string]any{
+		"version": schema.Version,
+		"block":   renderBlock(schema.Block),
+	}
+}
+
+func renderBlock(block *tfprotov6.SchemaBlock) map[string]any {
+	if block == nil {
+		return map[string]any{}
+	}
+
+	out := map[string]any{}
+
+	if len(block.Attributes) > 0 {
+		attributes := make(map[string]any, len(block.Attributes))
+
+		for _, attribute := range block.Attributes {
+			attributes[attribute.Name] = renderAttribute(attribute)
+		}
+
+		out["attributes"] = attributes
+	}
+
+	if len(block.BlockTypes) > 0 {
+		types := make(map[string]any, len(block.BlockTypes))
+
+		for _, nested := range block.BlockTypes {
+			types[nested.TypeName] = map[string]any{
+				"nesting_mode": nestingMode(nested.Nesting),
+				"block":        renderBlock(nested.Block),
+			}
+		}
+
+		out["block_types"] = types
+	}
+
+	addDescription(out, block.Description, block.DescriptionKind)
+
+	if block.Deprecated {
+		out["deprecated"] = true
+	}
+
+	return out
+}
+
+func renderAttribute(attribute *tfprotov6.SchemaAttribute) map[string]any {
+	out := map[string]any{}
+
+	switch {
+	case attribute.NestedType != nil:
+		out["nested_type"] = renderNestedType(attribute.NestedType)
+	case attribute.Type != nil:
+		// The protocol carries a Terraform type, which marshals to exactly the form
+		// the schema document uses.
+		out["type"] = json.RawMessage(mustMarshalType(attribute.Type))
+	}
+
+	for key, set := range map[string]bool{
+		"required":   attribute.Required,
+		"optional":   attribute.Optional,
+		"computed":   attribute.Computed,
+		"sensitive":  attribute.Sensitive,
+		"deprecated": attribute.Deprecated,
+	} {
+		if set {
+			out[key] = true
+		}
+	}
+
+	addDescription(out, attribute.Description, attribute.DescriptionKind)
+
+	return out
+}
+
+func renderNestedType(object *tfprotov6.SchemaObject) map[string]any {
+	attributes := make(map[string]any, len(object.Attributes))
+
+	for _, attribute := range object.Attributes {
+		attributes[attribute.Name] = renderAttribute(attribute)
+	}
+
+	return map[string]any{
+		"attributes":   attributes,
+		"nesting_mode": nestingMode(object.Nesting),
+	}
+}
+
+func addDescription(out map[string]any, description string, kind tfprotov6.StringKind) {
+	if description == "" {
+		return
+	}
+
+	out["description"] = description
+	out["description_kind"] = "plain"
+
+	if kind == tfprotov6.StringKindMarkdown {
+		out["description_kind"] = "markdown"
+	}
+}
+
+// nestingMode renders a nesting mode the way the schema document spells it. The
+// protocol's own String is upper case.
+func nestingMode(nesting fmt.Stringer) string {
+	return strings.ToLower(nesting.String())
+}
+
+func mustMarshalType(typ any) []byte {
+	marshaller, ok := typ.(interface{ MarshalJSON() ([]byte, error) })
+	if !ok {
+		return []byte(`"dynamic"`)
+	}
+
+	encoded, err := marshaller.MarshalJSON()
+	if err != nil {
+		return []byte(`"dynamic"`)
+	}
+
+	return encoded
+}

@@ -1,0 +1,69 @@
+name: Setup Nix + devenv
+description: >-
+  Install Nix, restore the persisted Nix store from the GitHub Actions cache,
+  repair any invalid paths, install devenv and warm the devenv shell with
+  self-healing retries so a partial or poisoned cache restore recovers instead
+  of failing the job. Also restores the Go module and build caches.
+
+inputs:
+  save-nix-store:
+    description: >-
+      Whether this job may write the Nix store cache. Only a trunk branch
+      should, so a pull request cannot poison the entry every other job
+      restores from.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - uses: cachix/install-nix-action@v31
+      with:
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+          accept-flake-config = true
+          fallback = true
+          connect-timeout = 20
+          download-attempts = 5
+          stalled-download-timeout = 90
+          narinfo-cache-negative-ttl = 0
+
+    # The devenv shell pulls a whole toolchain, and two of the generators are
+    # built from source because nixpkgs does not package them. Persisting the
+    # store is what keeps that off the critical path of every run.
+    - name: Cache Nix store
+      uses: nix-community/cache-nix-action@v7
+      with:
+        primary-key: nix-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock', 'devenv.nix', 'devenv.yaml') }}
+        restore-prefixes-first-match: nix-${{ runner.os }}-${{ runner.arch }}-
+        save: ${{ inputs.save-nix-store == 'true' }}
+        gc-max-store-size-linux: 5368709120
+        gc-max-store-size-macos: 5368709120
+
+    - name: Install devenv.sh
+      shell: bash
+      run: nix profile add nixpkgs#devenv
+
+    - name: Repair store and warm the devenv shell
+      shell: bash
+      run: |
+        repair() { nix-store --verify --check-contents --repair || true; }
+        repair
+        for attempt in 1 2 3; do
+          if devenv shell true; then
+            exit 0
+          fi
+          echo "::warning title=devenv shell::eval failed (attempt $attempt); repairing store and retrying"
+          repair
+          rm -rf .devenv .devenv.flake.nix 2>/dev/null || true
+        done
+        devenv shell true
+
+    - name: Cache Go modules and build output
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('go.sum') }}
+        restore-keys: go-${{ runner.os }}-${{ runner.arch }}-

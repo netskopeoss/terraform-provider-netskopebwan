@@ -1,0 +1,6 @@
+inputs:
+  nixpkgs:
+    url: github:cachix/devenv-nixpkgs/rolling
+
+# terraform is unfree since v1.6 (BUSL)
+allowUnfree: true

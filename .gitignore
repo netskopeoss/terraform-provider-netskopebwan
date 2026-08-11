@@ -1,0 +1,122 @@
+# Terraform Provider specific
+terraform-provider-*
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Build artifacts
+/tfgen
+/.tools/
+*.exe
+*.exe~
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Generated files from Makefile
+/openapi.json
+/openapi_tf_gen.yaml
+/generator_config_gen.yml
+/provider_code_spec_gen.json
+/provider_schema_gen.json
+/internal/gen/
+/internal/bwanclient/mock/
+/internal/registry/registry_gen.go
+/docs/
+/docs_html/
+
+# Go
+.venv/
+dist/
+bin/
+*.out
+*.test
+*.prof
+*.race
+*.pprof
+.go-version
+go.work.sum
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+.vim/
+.netrwhist
+
+# Build and CI
+.env
+.env.local
+.env.*.local
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Local development
+*.log
+tmp/
+temp/
+.cache/
+/.devenv/
+/.direnv/
+
+# Test coverage
+*.cover
+*.coverprofile
+coverage.txt
+coverage.html
+
+# Protocol Buffers
+*.pb.go
+*.pb.*.go
+
+# Debugging
+debug
+pprof
+
+# Generated code
+*generated.go
+*gen.go
+
+# Dependency management
+vendor/
+.mod-cache/
+
+# Documentation builds
+site/
+.docs/
+
+# Python tools
+__pycache__/
+*.pyc
+.Python
+venv/
+ENV/
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg

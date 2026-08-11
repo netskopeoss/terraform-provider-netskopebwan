@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    # v1 is the line being developed, so it is treated as a trunk alongside master.
+    branches: [master, v1]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same ref makes the run in flight pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# Every step below the setup runs inside the devenv shell, which is what
+# supplies go, terraform, golangci-lint, make and the generator toolchain.
+defaults:
+  run:
+    shell: devenv shell bash -- -e {0}
+
+jobs:
+  ci:
+    name: Generate, check and build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Nix + devenv
+        uses: ./.github/actions/setup-nix
+        with:
+          save-nix-store: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/v1' }}
+
+      # generate comes first because the packages the provider imports are
+      # generated: internal/gen, internal/registry and the client mock do not
+      # exist in a fresh checkout, so nothing compiles before this.
+      - name: Generate
+        env:
+          # Point CI at another spec by setting an OPENAPI_SPEC_URL repository
+          # variable; it falls back to the URL devenv.nix carries.
+          OPENAPI_SPEC_URL: ${{ vars.OPENAPI_SPEC_URL }}
+        run: make generate
+
+      - name: Check formatting
+        run: make fmt-check
+
+      - name: Check Terraform formatting
+        run: make terraform-check
+
+      - name: Vet
+        run: make vet
+
+      - name: Lint
+        run: make lint
+
+      - name: Test
+        run: make test
+
+      - name: Build provider
+        run: make provider
+
+      # The registry serves this markdown, so a change that breaks rendering
+      # should fail here and not at publish time.
+      - name: Generate docs
+        run: make docs
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out
+          if-no-files-found: ignore

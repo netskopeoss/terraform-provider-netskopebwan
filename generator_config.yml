@@ -1,0 +1,834 @@
+# Generator configuration for tfplugingen-openapi.
+#
+# https://developer.hashicorp.com/terraform/plugin/code-generation/openapi-generator
+#
+# The input spec is the normalised BWAN v2 OpenAPI document produced by
+# //mgmt/tf-provider/tools/specprep, so path parameters appear here with "_"
+# rather than the "-" used by the API itself.
+#
+# This file is the single source of truth for what the provider exposes: the
+# resource and data source registry is generated from it by `tfgen registry`.
+# Everything the runtime needs is derived from the entries below:
+#
+#   - a resource whose read path has no "{id}" placeholder is refreshed by
+#     listing its collection and matching on "id";
+#   - a resource with no update operation forces replacement on any change;
+#   - placeholders other than "{id}" become required attributes that force
+#     replacement, because they identify the parent the object lives under.
+#
+# `x_terraform` blocks carry the little that cannot be derived. The HashiCorp
+# generator ignores them; `tfgen registry` reads them.
+#
+# ## Objects configured through an opaque document
+#
+# Some objects carry their whole configuration in a field the API declares
+# without a type — device_config_raw, policy_config_raw and friends. Terraform
+# can only hold those as a JSON string, so it cannot validate a single field of
+# them, and a typed replacement would be a breaking schema change. Those objects
+# therefore:
+#
+#   - are named with a "_raw" suffix, leaving the plain name free for the typed
+#     replacement to take later without a conflict;
+#   - declare `x_terraform.raw_feature`, which turns into an
+#     `enable_raw_<feature>` provider argument they refuse to work
+#     without.
+#
+# `tfgen registry` enforces both halves of that: an object whose schema ends up
+# with a "*_raw" attribute has to be gated and suffixed, and a gate with nothing
+# to guard is an error. A merely opaque *value* — a credentials blob, an audit
+# diff — does not make an object raw; there is nothing typed to roll out for it.
+#
+# Site commands are intentionally absent: running a command is an action, not a
+# managed object. The v2 API has no separate site object — a gateway is the
+# site-level object — so bwan_gateway_raw is what manages a site.
+
+# Terraform reserves a handful of attribute names at the root of a resource, and a
+# schema declaring one is rejected outright — taking the whole provider down with
+# it, not just that resource. A cloud account genuinely has a field called
+# `provider` and the API requires it on create, so it cannot be dropped either:
+# it is exposed under another name and the runtime translates on the wire.
+x_terraform_renames:
+  provider: cloud_provider
+
+provider:
+  name: bwan
+
+resources:
+  address_group:
+    create:
+      path: /address-groups
+      method: POST
+    read:
+      path: /address-groups/{id}
+      method: GET
+    update:
+      path: /address-groups/{id}
+      method: PATCH
+    delete:
+      path: /address-groups/{id}
+      method: DELETE
+
+  # The API exposes no GET on a single address object, so the resource is
+  # refreshed from its group's collection.
+  address_object:
+    create:
+      path: /address-groups/{group_id}/address-objects
+      method: POST
+    read:
+      path: /address-groups/{group_id}/address-objects
+      method: GET
+    update:
+      path: /address-groups/{group_id}/address-objects/{id}
+      method: PATCH
+    delete:
+      path: /address-groups/{group_id}/address-objects/{id}
+      method: DELETE
+    schema:
+      ignores: [after, first, sort, filter, page_info, data]
+
+  ca_certificate:
+    create:
+      path: /ca-certificates
+      method: POST
+    read:
+      path: /ca-certificates/{id}
+      method: GET
+    update:
+      path: /ca-certificates/{id}
+      method: PATCH
+    delete:
+      path: /ca-certificates/{id}
+      method: DELETE
+
+  # A client's device configuration is deliberately not exposed. Note that the
+  # spec marks device_config_raw required on POST /clients, so creating a client
+  # through Terraform is rejected by the API until that changes; reading and
+  # updating one works.
+  client:
+    create:
+      path: /clients
+      method: POST
+    read:
+      path: /clients/{id}
+      method: GET
+    update:
+      path: /clients/{id}
+      method: PATCH
+    delete:
+      path: /clients/{id}
+      method: DELETE
+    schema:
+      ignores: [device_config_raw]
+
+  # A client template's on-premise detection probes accept either an object or the
+  # string it is shorthand for. Only the object form is exposed, so a configuration
+  # written against the shorthand cannot be expressed here yet: that is what the
+  # opt-in is for, and why the plain `client_template` name is still free.
+  client_template_raw:
+    x_terraform:
+      raw_feature: client_template
+    create:
+      path: /client-templates
+      method: POST
+    read:
+      path: /client-templates/{id}
+      method: GET
+    update:
+      path: /client-templates/{id}
+      method: PATCH
+    delete:
+      path: /client-templates/{id}
+      method: DELETE
+
+  cloud_account:
+    create:
+      path: /cloud-accounts
+      method: POST
+    read:
+      path: /cloud-accounts/{id}
+      method: GET
+    update:
+      path: /cloud-accounts/{id}
+      method: PATCH
+    delete:
+      path: /cloud-accounts/{id}
+      method: DELETE
+
+  controller:
+    create:
+      path: /controllers
+      method: POST
+    read:
+      path: /controllers/{id}
+      method: GET
+    update:
+      path: /controllers/{id}
+      method: PATCH
+    delete:
+      path: /controllers/{id}
+      method: DELETE
+
+  controller_operator:
+    create:
+      path: /controller-operators
+      method: POST
+    read:
+      path: /controller-operators/{id}
+      method: GET
+    update:
+      path: /controller-operators/{id}
+      method: PATCH
+    delete:
+      path: /controller-operators/{id}
+      method: DELETE
+
+  custom_app:
+    create:
+      path: /custom-apps
+      method: POST
+    read:
+      path: /custom-apps/{id}
+      method: GET
+    update:
+      path: /custom-apps/{id}
+      method: PATCH
+    delete:
+      path: /custom-apps/{id}
+      method: DELETE
+
+  device_group:
+    create:
+      path: /device-groups
+      method: POST
+    read:
+      path: /device-groups/{id}
+      method: GET
+    update:
+      path: /device-groups/{id}
+      method: PATCH
+    delete:
+      path: /device-groups/{id}
+      method: DELETE
+
+  gateway_group:
+    create:
+      path: /gateway-groups
+      method: POST
+    read:
+      path: /gateway-groups/{id}
+      method: GET
+    update:
+      path: /gateway-groups/{id}
+      method: PATCH
+    delete:
+      path: /gateway-groups/{id}
+      method: DELETE
+
+  # A gateway is the site-level object: creating one is how a site is brought
+  # into the tenant. The API takes two different bodies to create one, and each
+  # becomes a resource of its own: this one names a model, the raw one below
+  # carries the whole device configuration as an opaque document.
+  gateway:
+    x_terraform:
+      variant: model_name
+    create:
+      path: /gateways
+      method: POST
+    read:
+      path: /gateways/{id}
+      method: GET
+    update:
+      path: /gateways/{id}
+      method: PATCH
+    delete:
+      path: /gateways/{id}
+      method: DELETE
+    schema:
+      # The read and update models carry the opaque document whatever the object
+      # was created from; leaving it out is what makes this the typed gateway.
+      ignores: [device_config_raw]
+
+  gateway_raw:
+    x_terraform:
+      raw_feature: gateway
+      variant: device_config_raw
+    create:
+      path: /gateways
+      method: POST
+    read:
+      path: /gateways/{id}
+      method: GET
+    update:
+      path: /gateways/{id}
+      method: PATCH
+    delete:
+      path: /gateways/{id}
+      method: DELETE
+
+  gateway_template_raw:
+    x_terraform:
+      raw_feature: gateway_template
+    create:
+      path: /gateway-templates
+      method: POST
+    read:
+      path: /gateway-templates/{id}
+      method: GET
+    update:
+      path: /gateway-templates/{id}
+      method: PATCH
+    delete:
+      path: /gateway-templates/{id}
+      method: DELETE
+
+  # The API exposes no update on a link monitor: every change replaces it.
+  link_monitor:
+    create:
+      path: /link-monitors
+      method: POST
+    read:
+      path: /link-monitors/{id}
+      method: GET
+    delete:
+      path: /link-monitors/{id}
+      method: DELETE
+
+  ntp_config:
+    create:
+      path: /ntp-configs
+      method: POST
+    read:
+      path: /ntp-configs/{id}
+      method: GET
+    update:
+      path: /ntp-configs/{id}
+      method: PATCH
+    delete:
+      path: /ntp-configs/{id}
+      method: DELETE
+
+  policy_raw:
+    x_terraform:
+      raw_feature: policy
+    create:
+      path: /policies
+      method: POST
+    read:
+      path: /policies/{id}
+      method: GET
+    update:
+      path: /policies/{id}
+      method: PATCH
+    delete:
+      path: /policies/{id}
+      method: DELETE
+
+  radius_server:
+    create:
+      path: /radius-servers
+      method: POST
+    read:
+      path: /radius-servers/{id}
+      method: GET
+    update:
+      path: /radius-servers/{id}
+      method: PATCH
+    delete:
+      path: /radius-servers/{id}
+      method: DELETE
+
+  segment:
+    create:
+      path: /segments
+      method: POST
+    read:
+      path: /segments/{id}
+      method: GET
+    update:
+      path: /segments/{id}
+      method: PATCH
+    delete:
+      path: /segments/{id}
+      method: DELETE
+
+  # Serving a tenant is add-or-remove only: there is neither a GET on a single
+  # served tenant nor an update, so it is refreshed from the collection.
+  served_tenant:
+    create:
+      path: /served-tenants
+      method: POST
+    read:
+      path: /served-tenants
+      method: GET
+    delete:
+      path: /served-tenants/{id}
+      method: DELETE
+    schema:
+      ignores: [after, first, sort, filter, page_info, data]
+
+  # The API tells four kinds of tag apart by a `type` discriminator, and each kind
+  # has fields the others do not: a wanlink tag has a probe frequency, an overlay
+  # tag is private or not. One resource per kind means every field is really
+  # settable on the resource that has it, rather than optional everywhere and
+  # rejected by the API on three types out of four.
+  tag_wanlink:
+    x_terraform:
+      variant: wanlink
+    create:
+      path: /tags
+      method: POST
+    read:
+      path: /tags/{id}
+      method: GET
+    update:
+      path: /tags/{id}
+      method: PATCH
+    delete:
+      path: /tags/{id}
+      method: DELETE
+
+  tag_overlay:
+    x_terraform:
+      variant: overlay
+    create:
+      path: /tags
+      method: POST
+    read:
+      path: /tags/{id}
+      method: GET
+    update:
+      path: /tags/{id}
+      method: PATCH
+    delete:
+      path: /tags/{id}
+      method: DELETE
+
+  tag_topology:
+    x_terraform:
+      variant: topology
+    create:
+      path: /tags
+      method: POST
+    read:
+      path: /tags/{id}
+      method: GET
+    update:
+      path: /tags/{id}
+      method: PATCH
+    delete:
+      path: /tags/{id}
+      method: DELETE
+
+  tag_gateway:
+    x_terraform:
+      variant: gateway
+    create:
+      path: /tags
+      method: POST
+    read:
+      path: /tags/{id}
+      method: GET
+    update:
+      path: /tags/{id}
+      method: PATCH
+    delete:
+      path: /tags/{id}
+      method: DELETE
+
+  tenant:
+    create:
+      path: /tenants
+      method: POST
+    read:
+      path: /tenants/{id}
+      method: GET
+    update:
+      path: /tenants/{id}
+      method: PATCH
+    delete:
+      path: /tenants/{id}
+      method: DELETE
+    schema:
+      ignores: [has_active_network]
+
+  user:
+    create:
+      path: /users
+      method: POST
+    read:
+      path: /users/{id}
+      method: GET
+    update:
+      path: /users/{id}
+      method: PATCH
+    delete:
+      path: /users/{id}
+      method: DELETE
+
+  user_group:
+    create:
+      path: /user-groups
+      method: POST
+    read:
+      path: /user-groups/{id}
+      method: GET
+    update:
+      path: /user-groups/{id}
+      method: PATCH
+    delete:
+      path: /user-groups/{id}
+      method: DELETE
+
+  vpnpeer:
+    create:
+      path: /vpnpeers
+      method: POST
+    read:
+      path: /vpnpeers/{id}
+      method: GET
+    update:
+      path: /vpnpeers/{id}
+      method: PATCH
+    delete:
+      path: /vpnpeers/{id}
+      method: DELETE
+
+data_sources:
+  address_group:
+    read:
+      path: /address-groups/{id}
+      method: GET
+  address_groups:
+    read:
+      path: /address-groups
+      method: GET
+
+  address_objects:
+    read:
+      path: /address-groups/{group_id}/address-objects
+      method: GET
+
+  app_categories:
+    read:
+      path: /app-categories
+      method: GET
+
+  audit_records:
+    read:
+      path: /auditevents
+      method: GET
+
+  ca_certificate:
+    read:
+      path: /ca-certificates/{id}
+      method: GET
+  ca_certificates:
+    read:
+      path: /ca-certificates
+      method: GET
+
+  client:
+    read:
+      path: /clients/{id}
+      method: GET
+    schema:
+      ignores: [device_config_raw]
+  clients:
+    read:
+      path: /clients
+      method: GET
+    schema:
+      ignores: [data.device_config_raw]
+
+  client_template_raw:
+    x_terraform:
+      raw_feature: client_template
+    read:
+      path: /client-templates/{id}
+      method: GET
+  client_templates_raw:
+    x_terraform:
+      raw_feature: client_template
+    read:
+      path: /client-templates
+      method: GET
+
+  cloud_account:
+    read:
+      path: /cloud-accounts/{id}
+      method: GET
+  cloud_accounts:
+    read:
+      path: /cloud-accounts
+      method: GET
+
+  controller:
+    read:
+      path: /controllers/{id}
+      method: GET
+  controllers:
+    read:
+      path: /controllers
+      method: GET
+
+  controller_operator:
+    read:
+      path: /controller-operators/{id}
+      method: GET
+  controller_operators:
+    read:
+      path: /controller-operators
+      method: GET
+
+  custom_app:
+    read:
+      path: /custom-apps/{id}
+      method: GET
+  custom_apps:
+    read:
+      path: /custom-apps
+      method: GET
+
+  device_group:
+    read:
+      path: /device-groups/{id}
+      method: GET
+  device_groups:
+    read:
+      path: /device-groups
+      method: GET
+
+  gateway_group:
+    read:
+      path: /gateway-groups/{id}
+      method: GET
+  gateway_groups:
+    read:
+      path: /gateway-groups
+      method: GET
+
+  gateway:
+    x_terraform:
+      variant: model_name
+    read:
+      path: /gateways/{id}
+      method: GET
+    schema:
+      ignores: [device_config_raw]
+  gateways:
+    x_terraform:
+      variant: model_name
+    read:
+      path: /gateways
+      method: GET
+    schema:
+      ignores: [data.device_config_raw]
+
+  gateway_raw:
+    x_terraform:
+      raw_feature: gateway
+      variant: device_config_raw
+    read:
+      path: /gateways/{id}
+      method: GET
+  gateways_raw:
+    x_terraform:
+      raw_feature: gateway
+      variant: device_config_raw
+    read:
+      path: /gateways
+      method: GET
+
+  gateway_template_raw:
+    x_terraform:
+      raw_feature: gateway_template
+    read:
+      path: /gateway-templates/{id}
+      method: GET
+  gateway_templates_raw:
+    x_terraform:
+      raw_feature: gateway_template
+    read:
+      path: /gateway-templates
+      method: GET
+
+  inventory_devices:
+    read:
+      path: /inventory-devices
+      method: GET
+
+  link_monitor:
+    read:
+      path: /link-monitors/{id}
+      method: GET
+  link_monitors:
+    read:
+      path: /link-monitors
+      method: GET
+
+  mthubs:
+    read:
+      path: /mthubs
+      method: GET
+
+  ntp_config:
+    read:
+      path: /ntp-configs/{id}
+      method: GET
+  ntp_configs:
+    read:
+      path: /ntp-configs
+      method: GET
+
+  policy_raw:
+    x_terraform:
+      raw_feature: policy
+    read:
+      path: /policies/{id}
+      method: GET
+  policies_raw:
+    x_terraform:
+      raw_feature: policy
+    read:
+      path: /policies
+      method: GET
+
+  qosmos_apps:
+    read:
+      path: /qosmos-apps
+      method: GET
+
+  radius_server:
+    read:
+      path: /radius-servers/{id}
+      method: GET
+  radius_servers:
+    read:
+      path: /radius-servers
+      method: GET
+
+  segment:
+    read:
+      path: /segments/{id}
+      method: GET
+  segments:
+    read:
+      path: /segments
+      method: GET
+
+  served_tenants:
+    read:
+      path: /served-tenants
+      method: GET
+
+  service_tenant:
+    read:
+      path: /tenants/{id}/service-tenant
+      method: GET
+
+  software_downloads:
+    read:
+      path: /software-downloads
+      method: GET
+
+  software_versions:
+    read:
+      path: /software-versions
+      method: GET
+
+  tag_wanlink:
+    x_terraform:
+      variant: wanlink
+    read:
+      path: /tags/{id}
+      method: GET
+  tags_wanlink:
+    x_terraform:
+      variant: wanlink
+    read:
+      path: /tags
+      method: GET
+
+  tag_overlay:
+    x_terraform:
+      variant: overlay
+    read:
+      path: /tags/{id}
+      method: GET
+  tags_overlay:
+    x_terraform:
+      variant: overlay
+    read:
+      path: /tags
+      method: GET
+
+  tag_topology:
+    x_terraform:
+      variant: topology
+    read:
+      path: /tags/{id}
+      method: GET
+  tags_topology:
+    x_terraform:
+      variant: topology
+    read:
+      path: /tags
+      method: GET
+
+  tag_gateway:
+    x_terraform:
+      variant: gateway
+    read:
+      path: /tags/{id}
+      method: GET
+  tags_gateway:
+    x_terraform:
+      variant: gateway
+    read:
+      path: /tags
+      method: GET
+
+  tenant:
+    read:
+      path: /tenants/{id}
+      method: GET
+    schema:
+      ignores: [has_active_network]
+  tenants:
+    read:
+      path: /tenants
+      method: GET
+    schema:
+      ignores: [data.has_active_network]
+
+  user:
+    read:
+      path: /users/{id}
+      method: GET
+  users:
+    read:
+      path: /users
+      method: GET
+
+  user_group:
+    read:
+      path: /user-groups/{id}
+      method: GET
+  user_groups:
+    read:
+      path: /user-groups
+      method: GET
+
+  vpnpeer:
+    read:
+      path: /vpnpeers/{id}
+      method: GET
+  vpnpeers:
+    read:
+      path: /vpnpeers
+      method: GET
+
+  webroot_categories:
+    read:
+      path: /webroot-categories
+      method: GET
