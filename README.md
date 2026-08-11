@@ -57,8 +57,8 @@ second place to keep in step:
 ## Objects the API describes as several shapes
 
 Parts of the API describe one object as a choice between shapes — a tag is a
-wanlink tag or an overlay tag; a link monitor's target is an fqdn, an ipv4 or an
-ipv6. Terraform has no type for that, so there are two ways out and
+wanlink tag or an overlay tag; a cloud account's credentials are an AWS pair or
+an Azure one. Terraform has no type for that, so there are two ways out and
 `generator_config.yml` picks per object.
 
 **A Terraform type per shape**, where the shapes are really different kinds of
@@ -66,25 +66,24 @@ object. An entry claiming a `variant` gets the shape to itself:
 
 ```hcl
 resource "netskopebwan_tag_wanlink" "probe" {
-  name      = "probe"
-  frequency = 60          # only a wanlink tag has one
+  name = "probe"
+  config = {
+    type               = "wanlink"
+    wan_link_frequency = 60       # only a wanlink tag has one
+  }
 }
 ```
 
-Four kinds of tag become four resources, and `frequency` is settable on the one
-that has it rather than optional on all four and rejected by the API on three.
-The API still serves them all from `/tags`, so each type recognises its own
-objects: reading one by id checks it really is that kind, and a list drops the
-others.
+Four kinds of tag become four resources, and `wan_link_frequency` is settable on
+the one that has it rather than optional on all four and rejected by the API on
+three. The API still serves them all from `/overlay-tags`, telling them apart by
+`config.type`, so each type recognises its own objects: reading one by id checks
+it really is that kind, and a list drops the others.
 
 **A block per shape**, where the choice is about how one object is configured.
 No claim is made, so the shapes become sibling blocks of which exactly one is set:
 
 ```hcl
-resource "netskopebwan_link_monitor" "probe" {
-  fqdn = { fqdn = "probe.example.com" }
-}
-
 resource "netskopebwan_cloud_account" "aws" {
   name           = "production"
   cloud_provider = "aws"

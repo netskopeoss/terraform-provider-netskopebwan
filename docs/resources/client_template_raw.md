@@ -36,7 +36,6 @@ description: |-
 - `labels` (List of String)
 - `mtu_bytes` (Number)
 - `multi_link_support` (String) Multilink support type
-- `on_demand` (Boolean)
 - `on_premise_detection` (Attributes) (see [below for nested schema](#nestedatt--on_premise_detection))
 - `software_version` (String)
 - `start_before_logon` (Boolean)

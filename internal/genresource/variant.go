@@ -1,19 +1,24 @@
 package genresource
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Variant identifies one kind of object on an endpoint that serves several.
 //
-// The API creates, reads and lists all four kinds of tag through /tags, telling
-// them apart by a `type` field. Each kind is its own Terraform type, so each one
-// has to recognise its own objects and ignore the rest: without that, listing
-// wanlink tags would return overlay tags with every wanlink field null, and
-// reading one by id would quietly adopt an object of the wrong kind.
+// The API creates, reads and lists all four kinds of tag through /overlay-tags,
+// telling them apart by a `config.type` field. Each kind is its own Terraform
+// type, so each one has to recognise its own objects and ignore the rest:
+// without that, listing wanlink tags would return overlay tags with every
+// wanlink field null, and reading one by id would quietly adopt an object of the
+// wrong kind.
 type Variant struct {
 	// Name is the branch as the spec names it, e.g. "wanlink".
 	Name string
 	// Discriminator is the field whose value selects the kind, where the API
-	// declares one.
+	// declares one, dotted where the field is nested: a tag's kind is at
+	// `config.type`.
 	Discriminator string
 	// Value is what Discriminator holds for this kind.
 	Value string
@@ -35,9 +40,7 @@ func (v *Variant) Matches(document any) bool {
 	}
 
 	if v.Discriminator != "" {
-		value, _ := object[v.Discriminator].(string)
-
-		return value == v.Value
+		return discriminant(object, v.Discriminator) == v.Value
 	}
 
 	for _, name := range v.Match {
@@ -77,8 +80,8 @@ func (v *Variant) Mismatch(typeName string, document any) string {
 	}
 
 	object, _ := document.(map[string]any)
-	found, _ := object[v.Discriminator].(string)
 
+	found := discriminant(object, v.Discriminator)
 	if found == "" {
 		found = "unset"
 	}
@@ -86,4 +89,24 @@ func (v *Variant) Mismatch(typeName string, document any) string {
 	return fmt.Sprintf(
 		"The object exists but its %s is %q, and %s manages the %q kind. Use the Terraform type for %q instead.",
 		v.Discriminator, found, typeName, v.Value, found)
+}
+
+// discriminant reads the field a dotted path names, walking the objects on the
+// way to it. Anything missing or of another type reads as no value at all, which
+// is what an object of a kind this Variant does not manage looks like.
+func discriminant(object map[string]any, path string) string {
+	names := strings.Split(path, ".")
+
+	for _, name := range names[:len(names)-1] {
+		next, ok := object[name].(map[string]any)
+		if !ok {
+			return ""
+		}
+
+		object = next
+	}
+
+	value, _ := object[names[len(names)-1]].(string)
+
+	return value
 }

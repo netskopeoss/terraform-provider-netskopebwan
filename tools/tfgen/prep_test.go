@@ -303,3 +303,172 @@ components:
 	require.NotEmpty(t, warnings)
 	require.Contains(t, warnings[0], "recursive $ref")
 }
+
+// runPrepClaiming is prep as `tfgen prep` runs it for a configuration that binds
+// variants of a path to Terraform types of their own.
+func runPrepClaiming(t *testing.T, document string, claims map[string][]string) (map[string]any, []string) {
+	t.Helper()
+
+	doc := parse(t, document)
+	prep := NewPrep(doc)
+
+	for _, path := range slices.Sorted(maps.Keys(claims)) {
+		for _, name := range claims[path] {
+			prep.Claim(path, name)
+		}
+	}
+
+	prep.Run()
+
+	return doc, prep.Warnings
+}
+
+func variantMetadataOf(t *testing.T, doc map[string]any, path string) map[string]any {
+	t.Helper()
+
+	paths, _ := doc["paths"].(map[string]any)
+
+	item, ok := paths[path].(map[string]any)
+	require.True(t, ok, "no path %q; the document has %v", path, slices.Sorted(maps.Keys(paths)))
+
+	out, ok := item[VariantExtension].(map[string]any)
+	require.True(t, ok, "path %q carries no %s", path, VariantExtension)
+
+	return out
+}
+
+// The BWAN spec nests the choice between the four kinds of tag inside the tag's
+// `config`, and names the kinds through a discriminator mapping without any
+// branch declaring the `type` the mapping selects on. Both halves have to reach
+// the runtime: where the kind is written on an object it reads back, and how to
+// write the kind on an object it creates.
+func TestPrepTakesAVariantSelectedByANestedDiscriminator(t *testing.T) {
+	doc, warnings := runPrepClaiming(t, `
+paths:
+  /overlay-tags:
+    get:
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: {$ref: '#/components/schemas/OverlayTag'}
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/OverlayTagCreate'}
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/OverlayTag'}
+components:
+  schemas:
+    OverlayTagWanlinkConfig:
+      type: object
+      properties:
+        wan_link_frequency: {type: integer}
+    OverlayTagOverlayConfig:
+      type: object
+      properties:
+        overlay_private: {type: boolean}
+    OverlayTagConfig:
+      oneOf:
+        - $ref: '#/components/schemas/OverlayTagWanlinkConfig'
+        - $ref: '#/components/schemas/OverlayTagOverlayConfig'
+      discriminator:
+        propertyName: type
+        mapping:
+          wanlink: '#/components/schemas/OverlayTagWanlinkConfig'
+          overlay: '#/components/schemas/OverlayTagOverlayConfig'
+    OverlayTag:
+      type: object
+      required: [id, name, config]
+      properties:
+        id: {type: string, readOnly: true}
+        name: {type: string}
+        config: {$ref: '#/components/schemas/OverlayTagConfig'}
+    OverlayTagCreate:
+      type: object
+      required: [name, config]
+      properties:
+        name: {type: string}
+        config: {$ref: '#/components/schemas/OverlayTagConfig'}
+`, map[string][]string{"/overlay-tags": {"wanlink", "overlay"}})
+
+	require.Empty(t, warnings)
+
+	// The discriminator is reported where the runtime will look for it: on the
+	// object it recognises, which is the tag rather than the tag's config, and
+	// element by element for the collection the same path lists.
+	require.Equal(t, map[string]any{
+		"name":          "wanlink",
+		"discriminator": "config.type",
+		"value":         "wanlink",
+		"match":         []any{"wan_link_frequency"},
+	}, variantMetadataOf(t, doc, "/overlay-tags@wanlink"))
+
+	require.Equal(t, "config.type", variantMetadataOf(t, doc, "/overlay-tags@overlay")["discriminator"])
+	require.Equal(t, "overlay", variantMetadataOf(t, doc, "/overlay-tags@overlay")["value"])
+
+	// No branch declared the property the mapping selects on, so the branch is
+	// completed from the mapping: without this the create body has no way to say
+	// which kind it is creating.
+	config := schema(t, doc, "OverlayTagConfigWanlink")
+	properties, _ := config["properties"].(map[string]any)
+
+	kind, _ := properties["type"].(map[string]any)
+	require.Equal(t, "string", kind["type"])
+	require.Equal(t, []string{"wanlink"}, anyStrings(kind["enum"]))
+	require.Contains(t, stringList(config["required"]), "type")
+
+	// The narrowed config holds only its own branch's fields.
+	require.Contains(t, properties, "wan_link_frequency")
+	require.NotContains(t, properties, "overlay_private")
+}
+
+// A branch named after anything other than a discriminator mapping is left
+// alone: the name is not a value the API would recognise.
+func TestPrepInventsNoDiscriminatorValueForAnUnmappedBranch(t *testing.T) {
+	doc, warnings := runPrepClaiming(t, `
+paths:
+  /monitors:
+    get:
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Monitor'}
+components:
+  schemas:
+    Fqdn:
+      type: object
+      required: [fqdn]
+      properties:
+        fqdn: {type: string}
+    Ipv4:
+      type: object
+      required: [ipv4]
+      properties:
+        ipv4: {type: string}
+    Monitor:
+      oneOf:
+        - $ref: '#/components/schemas/Fqdn'
+        - $ref: '#/components/schemas/Ipv4'
+`, map[string][]string{"/monitors": {"fqdn"}})
+
+	require.Empty(t, warnings)
+
+	metadata := variantMetadataOf(t, doc, "/monitors@fqdn")
+	require.Empty(t, metadata["discriminator"])
+	require.Empty(t, metadata["value"])
+	require.Equal(t, []any{"fqdn"}, metadata["match"])
+
+	properties, _ := schema(t, doc, "MonitorFqdn")["properties"].(map[string]any)
+	require.NotContains(t, properties, "type")
+}

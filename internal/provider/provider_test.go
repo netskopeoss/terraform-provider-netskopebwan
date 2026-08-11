@@ -258,6 +258,14 @@ func TestTagKindsAreSeparateResources(t *testing.T) {
 		"tag_gateway":  "gateway",
 	}, variants)
 
+	// The API writes the kind inside the tag, so every one of them has to be
+	// recognised there rather than on the tag itself.
+	for _, definition := range registry.Resources() {
+		if definition.Variant != nil && strings.HasPrefix(definition.Name, "tag_") {
+			require.Equal(t, "config.type", definition.Variant.Discriminator, definition.Name)
+		}
+	}
+
 	// The umbrella name is gone: there is no one resource that manages any tag.
 	for _, definition := range registry.Resources() {
 		require.NotEqual(t, "tag", definition.Name)

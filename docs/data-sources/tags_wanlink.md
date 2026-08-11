@@ -32,17 +32,26 @@ description: |-
 
 Read-Only:
 
+- `config` (Attributes) (see [below for nested schema](#nestedatt--data--config))
 - `created_at` (String)
 - `created_by` (Attributes) (see [below for nested schema](#nestedatt--data--created_by))
 - `description` (String)
 - `enabled` (Boolean)
-- `frequency` (Number) WAN link frequency in milliseconds
 - `id` (String)
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--data--modified_by))
 - `name` (String)
 - `system` (Boolean)
+- `tenant_id` (String)
+
+<a id="nestedatt--data--config"></a>
+### Nested Schema for `data.config`
+
+Read-Only:
+
 - `type` (String)
+- `wan_link_frequency` (Number)
+
 
 <a id="nestedatt--data--created_by"></a>
 ### Nested Schema for `data.created_by`

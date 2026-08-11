@@ -281,18 +281,6 @@ resources:
       path: /gateway-templates/{id}
       method: DELETE
 
-  # The API exposes no update on a link monitor: every change replaces it.
-  link_monitor:
-    create:
-      path: /link-monitors
-      method: POST
-    read:
-      path: /link-monitors/{id}
-      method: GET
-    delete:
-      path: /link-monitors/{id}
-      method: DELETE
-
   ntp_config:
     create:
       path: /ntp-configs
@@ -351,88 +339,73 @@ resources:
       path: /segments/{id}
       method: DELETE
 
-  # Serving a tenant is add-or-remove only: there is neither a GET on a single
-  # served tenant nor an update, so it is refreshed from the collection.
-  served_tenant:
-    create:
-      path: /served-tenants
-      method: POST
-    read:
-      path: /served-tenants
-      method: GET
-    delete:
-      path: /served-tenants/{id}
-      method: DELETE
-    schema:
-      ignores: [after, first, sort, filter, page_info, data]
-
-  # The API tells four kinds of tag apart by a `type` discriminator, and each kind
-  # has fields the others do not: a wanlink tag has a probe frequency, an overlay
-  # tag is private or not. One resource per kind means every field is really
-  # settable on the resource that has it, rather than optional everywhere and
-  # rejected by the API on three types out of four.
+  # The API tells four kinds of tag apart by a `config.type` discriminator, and
+  # each kind has fields the others do not: a wanlink tag has a probe frequency,
+  # an overlay tag is private or not. One resource per kind means every field is
+  # really settable on the resource that has it, rather than optional everywhere
+  # and rejected by the API on three types out of four.
   tag_wanlink:
     x_terraform:
       variant: wanlink
     create:
-      path: /tags
+      path: /overlay-tags
       method: POST
     read:
-      path: /tags/{id}
+      path: /overlay-tags/{id}
       method: GET
     update:
-      path: /tags/{id}
+      path: /overlay-tags/{id}
       method: PATCH
     delete:
-      path: /tags/{id}
+      path: /overlay-tags/{id}
       method: DELETE
 
   tag_overlay:
     x_terraform:
       variant: overlay
     create:
-      path: /tags
+      path: /overlay-tags
       method: POST
     read:
-      path: /tags/{id}
+      path: /overlay-tags/{id}
       method: GET
     update:
-      path: /tags/{id}
+      path: /overlay-tags/{id}
       method: PATCH
     delete:
-      path: /tags/{id}
+      path: /overlay-tags/{id}
       method: DELETE
 
   tag_topology:
     x_terraform:
       variant: topology
     create:
-      path: /tags
+      path: /overlay-tags
       method: POST
     read:
-      path: /tags/{id}
+      path: /overlay-tags/{id}
       method: GET
     update:
-      path: /tags/{id}
+      path: /overlay-tags/{id}
       method: PATCH
     delete:
-      path: /tags/{id}
+      path: /overlay-tags/{id}
       method: DELETE
 
   tag_gateway:
     x_terraform:
       variant: gateway
     create:
-      path: /tags
+      path: /overlay-tags
       method: POST
     read:
-      path: /tags/{id}
+      path: /overlay-tags/{id}
       method: GET
     update:
-      path: /tags/{id}
+      path: /overlay-tags/{id}
       method: PATCH
     delete:
-      path: /tags/{id}
+      path: /overlay-tags/{id}
       method: DELETE
 
   tenant:
@@ -657,20 +630,6 @@ data_sources:
       path: /inventory-devices
       method: GET
 
-  link_monitor:
-    read:
-      path: /link-monitors/{id}
-      method: GET
-  link_monitors:
-    read:
-      path: /link-monitors
-      method: GET
-
-  mthubs:
-    read:
-      path: /mthubs
-      method: GET
-
   ntp_config:
     read:
       path: /ntp-configs/{id}
@@ -716,16 +675,6 @@ data_sources:
       path: /segments
       method: GET
 
-  served_tenants:
-    read:
-      path: /served-tenants
-      method: GET
-
-  service_tenant:
-    read:
-      path: /tenants/{id}/service-tenant
-      method: GET
-
   software_downloads:
     read:
       path: /software-downloads
@@ -740,52 +689,52 @@ data_sources:
     x_terraform:
       variant: wanlink
     read:
-      path: /tags/{id}
+      path: /overlay-tags/{id}
       method: GET
   tags_wanlink:
     x_terraform:
       variant: wanlink
     read:
-      path: /tags
+      path: /overlay-tags
       method: GET
 
   tag_overlay:
     x_terraform:
       variant: overlay
     read:
-      path: /tags/{id}
+      path: /overlay-tags/{id}
       method: GET
   tags_overlay:
     x_terraform:
       variant: overlay
     read:
-      path: /tags
+      path: /overlay-tags
       method: GET
 
   tag_topology:
     x_terraform:
       variant: topology
     read:
-      path: /tags/{id}
+      path: /overlay-tags/{id}
       method: GET
   tags_topology:
     x_terraform:
       variant: topology
     read:
-      path: /tags
+      path: /overlay-tags
       method: GET
 
   tag_gateway:
     x_terraform:
       variant: gateway
     read:
-      path: /tags/{id}
+      path: /overlay-tags/{id}
       method: GET
   tags_gateway:
     x_terraform:
       variant: gateway
     read:
-      path: /tags
+      path: /overlay-tags
       method: GET
 
   tenant:

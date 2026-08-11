@@ -52,7 +52,6 @@ Read-Only:
 - `mtu_bytes` (Number)
 - `multi_link_support` (String) Multilink support type
 - `name` (String)
-- `on_demand` (Boolean)
 - `on_premise_detection` (Attributes) (see [below for nested schema](#nestedatt--data--on_premise_detection))
 - `policy_id` (String)
 - `rank` (Number)

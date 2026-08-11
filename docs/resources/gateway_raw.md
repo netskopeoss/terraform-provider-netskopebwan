@@ -47,7 +47,6 @@ resource "netskopebwan_gateway_raw" "branch" {
 
 - `config_updates_enabled` (Boolean)
 - `labels` (List of String)
-- `managed` (Boolean)
 
 ### Read-Only
 
@@ -55,6 +54,7 @@ resource "netskopebwan_gateway_raw" "branch" {
 - `created_by` (Attributes) (see [below for nested schema](#nestedatt--created_by))
 - `id` (String) Gateway ID
 - `is_activated` (Boolean)
+- `managed` (Boolean)
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
 - `name` (String)

@@ -32,6 +32,7 @@ description: |-
 
 Read-Only:
 
+- `config` (Attributes) (see [below for nested schema](#nestedatt--data--config))
 - `created_at` (String)
 - `created_by` (Attributes) (see [below for nested schema](#nestedatt--data--created_by))
 - `description` (String)
@@ -40,10 +41,18 @@ Read-Only:
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--data--modified_by))
 - `name` (String)
-- `private` (Boolean) Private overlay network
-- `reachable` (Boolean) Cloud reachable overlay
 - `system` (Boolean)
+- `tenant_id` (String)
+
+<a id="nestedatt--data--config"></a>
+### Nested Schema for `data.config`
+
+Read-Only:
+
+- `overlay_private` (Boolean)
+- `overlay_reachable` (Boolean)
 - `type` (String)
+
 
 <a id="nestedatt--data--created_by"></a>
 ### Nested Schema for `data.created_by`

@@ -28,6 +28,33 @@ func TestVariantMatchesOnTheDiscriminator(t *testing.T) {
 	require.False(t, wanlink.Matches(map[string]any{}))
 }
 
+// TestVariantMatchesOnANestedDiscriminator covers the tags the API serves from
+// /overlay-tags, whose kind is written inside the object rather than on it.
+func TestVariantMatchesOnANestedDiscriminator(t *testing.T) {
+	wanlink := &Variant{Name: "wanlink", Discriminator: "config.type", Value: "wanlink", Match: []string{"wan_link_frequency"}}
+
+	require.True(t, wanlink.Matches(map[string]any{
+		"name":   "probe",
+		"config": map[string]any{"type": "wanlink", "wan_link_frequency": 60},
+	}))
+	require.False(t, wanlink.Matches(map[string]any{
+		"name":   "probe",
+		"config": map[string]any{"type": "overlay"},
+	}))
+
+	// Nothing on the way to the discriminator can be assumed: an object without
+	// the field, without the object holding it, or holding something else there,
+	// is not this kind.
+	require.False(t, wanlink.Matches(map[string]any{"config": map[string]any{}}))
+	require.False(t, wanlink.Matches(map[string]any{"type": "wanlink"}))
+	require.False(t, wanlink.Matches(map[string]any{"config": "wanlink"}))
+	require.False(t, wanlink.Matches(map[string]any{}))
+
+	detail := wanlink.Mismatch("bwan_tag_wanlink", map[string]any{"config": map[string]any{"type": "overlay"}})
+	require.Contains(t, detail, `its config.type is "overlay"`)
+	require.Contains(t, wanlink.Mismatch("bwan_tag_wanlink", map[string]any{}), `is "unset"`)
+}
+
 // TestVariantMatchesOnDistinctiveFieldsWithoutADiscriminator covers the forms the
 // API declares with nothing to select them by, where the fields present are all
 // there is to go on.

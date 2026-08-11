@@ -20,10 +20,6 @@ description: |-
 - `model` (String)
 - `name` (String)
 
-### Optional
-
-- `managed` (Boolean)
-
 ### Read-Only
 
 - `config_updates_enabled` (Boolean)
@@ -32,6 +28,7 @@ description: |-
 - `id` (String) Gateway ID
 - `is_activated` (Boolean)
 - `labels` (List of String)
+- `managed` (Boolean)
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
 - `overlay_id` (Number)

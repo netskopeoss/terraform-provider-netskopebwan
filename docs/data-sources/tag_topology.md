@@ -22,6 +22,7 @@ description: |-
 
 ### Read-Only
 
+- `config` (Attributes) (see [below for nested schema](#nestedatt--config))
 - `created_at` (String)
 - `created_by` (Attributes) (see [below for nested schema](#nestedatt--created_by))
 - `description` (String)
@@ -30,7 +31,15 @@ description: |-
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
 - `name` (String)
 - `system` (Boolean)
+- `tenant_id` (String)
+
+<a id="nestedatt--config"></a>
+### Nested Schema for `config`
+
+Read-Only:
+
 - `type` (String)
+
 
 <a id="nestedatt--created_by"></a>
 ### Nested Schema for `created_by`

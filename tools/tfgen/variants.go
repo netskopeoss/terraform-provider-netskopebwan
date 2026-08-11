@@ -33,6 +33,11 @@ type variant struct {
 	// Discriminator is the property whose value selects this variant, taken from
 	// the spec's own discriminator. Empty when the spec declares none.
 	Discriminator string
+	// Path is the property path from the object the runtime sees down to the
+	// object Discriminator is declared on, empty when the two are the same. A
+	// tag's kind is selected by `config.type`, so the branching schema is the
+	// `config` a tag holds rather than the tag itself.
+	Path []string
 	// Value is what Discriminator holds for this variant.
 	Value string
 	// Match lists the properties only this variant declares. It is how a variant
@@ -92,15 +97,64 @@ func (p *Prep) variantsOf(schema map[string]any, loc string) []variant {
 	out := make([]variant, 0, len(resolved))
 
 	for i, target := range resolved {
+		// The mapping is the only place a branch's discriminator value is written
+		// down when no branch declares the property, so the branch is completed
+		// from it before anything is derived from the branch.
+		branch := withDiscriminator(target, discriminator, names[i], byValue)
+
 		out = append(out, variant{
 			Name:          names[i],
 			Discriminator: discriminator,
-			Value:         discriminatorValue(target, discriminator),
+			Value:         discriminatorValue(branch, discriminator),
 			Match:         distinctiveProperties(resolved, i),
-			Schema:        p.variantSchema(schema, target, key),
-			Bare:          target,
+			Schema:        p.variantSchema(schema, branch, key),
+			Bare:          branch,
 		})
 	}
+
+	return out
+}
+
+// withDiscriminator returns target with the discriminator property declared, so
+// that the branch says which kind it is.
+//
+// OpenAPI lets a discriminator name a property no branch declares — the BWAN
+// spec maps `type` to the four kinds of tag config without any of them having a
+// `type` — and a branch like that leaves its own kind unsayable: nothing in the
+// generated schema carries it, so neither could a request built from that
+// schema. The value comes from the mapping, which is where the spec does say
+// which kind the branch is.
+//
+// A branch that declares the property already is returned untouched, and so is
+// every branch of a schema whose kinds are told apart by their fields rather
+// than by a discriminator.
+func withDiscriminator(target map[string]any, discriminator, name string, byValue map[string]string) map[string]any {
+	if discriminator == "" || discriminatorValue(target, discriminator) != "" {
+		return target
+	}
+
+	// The branch is named after the mapping entry that points at it, so the name
+	// is the value wherever the mapping is what named it. Anything else named it
+	// after something that is not a discriminator value, and inventing one from
+	// that name would be putting words in the spec's mouth.
+	if !slices.Contains(mappedValues(byValue), name) {
+		return target
+	}
+
+	out, _ := deepCopy(target).(map[string]any)
+
+	props, ok := out["properties"].(map[string]any)
+	if !ok {
+		props = map[string]any{}
+		out["properties"] = props
+	}
+
+	props[discriminator] = map[string]any{
+		"type": "string",
+		"enum": []any{name},
+	}
+
+	setRequired(out, union(stringList(out["required"]), []string{discriminator}))
 
 	return out
 }
@@ -161,7 +215,7 @@ func (p *Prep) emitVariantPaths() {
 		for _, name := range p.claimed[path] {
 			clone, _ := deepCopy(item).(map[string]any)
 
-			found := p.rewriteToVariant(clone, name, map[string]bool{})
+			found := p.rewriteToVariant(clone, name, map[string]bool{}, nil)
 
 			// The metadata describes how to recognise this kind in a response, so
 			// it can only come from a response. A create body that branches does
@@ -171,7 +225,7 @@ func (p *Prep) emitVariantPaths() {
 			case responded != nil:
 				clone[VariantExtension] = map[string]any{
 					"name":          responded.Name,
-					"discriminator": responded.Discriminator,
+					"discriminator": responded.discriminatorPath(),
 					"value":         responded.Value,
 					"match":         toAnyList(responded.Match),
 				}
@@ -244,7 +298,13 @@ func (p *Prep) variantBehind(node any) *variant {
 // named branch, following references so a branch nested inside a collection
 // envelope is reached too. It reports the branch it found, for the metadata the
 // runtime discriminates with.
-func (p *Prep) rewriteToVariant(node any, name string, inFlight map[string]bool) *variant {
+//
+// path is where node sits inside the object the branch will be recognised on,
+// which is what tells the runtime a tag's kind is at `config.type` rather than
+// at `type`. It grows by a property name on the way into a property, and resets
+// on the way into an array's items: a collection is recognised element by
+// element, so an element's path starts again from the element.
+func (p *Prep) rewriteToVariant(node any, name string, inFlight map[string]bool, path []string) *variant {
 	var found *variant
 
 	switch typed := node.(type) {
@@ -255,19 +315,65 @@ func (p *Prep) rewriteToVariant(node any, name string, inFlight map[string]bool)
 				typed["$ref"] = component
 			}
 
-			return pickVariant(found, replacement, direct)
+			return pickVariant(found, replacement.under(path, direct), direct)
+		}
+
+		if props, ok := typed["properties"].(map[string]any); ok {
+			for _, property := range slices.Sorted(maps.Keys(props)) {
+				found = pickVariant(found, p.rewriteToVariant(props[property], name, inFlight, append(slices.Clone(path), property)), false)
+			}
 		}
 
 		for _, key := range slices.Sorted(maps.Keys(typed)) {
-			found = pickVariant(found, p.rewriteToVariant(typed[key], name, inFlight), false)
+			if key == "properties" {
+				continue
+			}
+
+			within := path
+			if key == "items" {
+				within = nil
+			}
+
+			found = pickVariant(found, p.rewriteToVariant(typed[key], name, inFlight, within), false)
 		}
 	case []any:
 		for _, entry := range typed {
-			found = pickVariant(found, p.rewriteToVariant(entry, name, inFlight), false)
+			found = pickVariant(found, p.rewriteToVariant(entry, name, inFlight, path), false)
 		}
 	}
 
 	return found
+}
+
+// under places v's discriminator inside the object at path. A branch reached
+// straight through a reference is the schema the discriminator is declared on,
+// so the discriminator is wherever that reference was; a branch reached through
+// a component that merely leads to one is already placed inside that component,
+// so the two paths join.
+func (v *variant) under(path []string, direct bool) *variant {
+	if v == nil {
+		return nil
+	}
+
+	out := *v
+
+	if direct {
+		out.Path = slices.Clone(path)
+	} else {
+		out.Path = append(slices.Clone(path), v.Path...)
+	}
+
+	return &out
+}
+
+// discriminatorPath spells out where the discriminator is on the object the
+// runtime recognises, as the dotted path the registry hands the runtime.
+func (v *variant) discriminatorPath() string {
+	if v.Discriminator == "" {
+		return ""
+	}
+
+	return strings.Join(append(slices.Clone(v.Path), v.Discriminator), ".")
 }
 
 // pickVariant keeps the branch worth reporting: one taken straight from a
@@ -321,7 +427,7 @@ func (p *Prep) variantComponent(ref, name string, inFlight map[string]bool) (str
 	clone, _ := deepCopy(schema).(map[string]any)
 
 	inFlight[source] = true
-	found := p.rewriteToVariant(clone, name, inFlight)
+	found := p.rewriteToVariant(clone, name, inFlight, nil)
 	delete(inFlight, source)
 
 	if found == nil {
@@ -332,6 +438,17 @@ func (p *Prep) variantComponent(ref, name string, inFlight map[string]bool) (str
 	p.taken[target] = found
 
 	return componentRef(target), found, false
+}
+
+// mappedValues lists the discriminator values a mapping spells out.
+func mappedValues(byValue map[string]string) []string {
+	out := make([]string, 0, len(byValue))
+
+	for _, value := range byValue {
+		out = append(out, value)
+	}
+
+	return out
 }
 
 // variantNamesOn lists the branches a path offers, for the error raised when the
