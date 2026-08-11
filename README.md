@@ -12,7 +12,8 @@ OpenAPI document that the REST gateway itself serves.
 > released, ask for `version = "~> 0.0"`. Terraform installs a prerelease only for
 > an exact version, and a prerelease then refuses to configure until that same
 > version is acknowledged with the `enable_pre_release` argument, so nobody runs
-> the 1.x line by accident.
+> the 1.x line by accident. Setting it accepts that instability: a prerelease is
+> NOT covered by the provider's backward-compatibility guarantees.
 
 Nothing here is written per resource. Adding an object to the provider means
 adding an entry to [`generator_config.yml`](generator_config.yml).
@@ -200,9 +201,12 @@ terraform {
 
 Running a 1.x prerelease takes two steps, and both name the same version — a
 prerelease is not installed by `~>` or `>=`, and refuses to configure until the
-version it is running is acknowledged. Substitute whichever prerelease you mean;
-`terraform init` records what it installed in `.terraform.lock.hcl`, and an
-unacknowledged prerelease says which version it wants in the error it raises:
+version it is running is acknowledged. Acknowledging it accepts what a prerelease
+is: nothing in that version's schema is covered by the provider's
+backward-compatibility guarantees, and the next prerelease may rename, reshape or
+remove any part of it. Substitute whichever prerelease you mean; `terraform init`
+records what it installed in `.terraform.lock.hcl`, and an unacknowledged
+prerelease says which version it wants in the error it raises:
 
 ```hcl
 terraform {

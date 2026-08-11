@@ -58,7 +58,9 @@ const (
 		"written against one may need reworking for the next. Until 1.0.0 is released, ask for " +
 		`version = "~> 0.0". Terraform installs a prerelease only for an exact version, and a ` +
 		"prerelease then refuses to configure until that same version is acknowledged with the " +
-		PreReleaseArgument + " argument, so nobody runs the 1.x line by accident."
+		PreReleaseArgument + " argument, so nobody runs the 1.x line by accident. Setting it " +
+		"accepts that instability: a prerelease is NOT covered by the provider's " +
+		"backward-compatibility guarantees."
 )
 
 // PreReleaseArgument is the provider argument a prerelease build has to be
@@ -78,10 +80,12 @@ const PreReleaseArgument = "enable_pre_release"
 // the build itself raises.
 const PreReleaseDescription = "Acknowledge running a prerelease build of this provider by naming " +
 	"the exact version installed, which is the version Terraform records in .terraform.lock.hcl. " +
-	"A prerelease refuses to configure without it, because a prerelease schema is generated from " +
-	"a specification that is still changing and a configuration written against one prerelease " +
-	"may not work against the next; the version is named rather than switched on so that the next " +
-	"prerelease asks again. This has no effect on a released version."
+	"A prerelease refuses to configure without it. Setting it is an explicit acceptance of the " +
+	"instability that comes with one: a prerelease is NOT covered by the provider's " +
+	"backward-compatibility guarantees, its resources, data sources and attributes MAY be " +
+	"renamed, reshaped or removed in the next prerelease, and a configuration or state written " +
+	"against this version MAY need reworking to move to it. The version is named rather than " +
+	"switched on so that the next prerelease asks again. This has no effect on a released version."
 
 // New returns the provider factory the plugin server is started with.
 func New(version string) func() provider.Provider {
@@ -302,7 +306,11 @@ func (p *bwanProvider) acknowledgedPreRelease(
 					"state written against it may need reworking for the next prerelease.\n\n"+
 					"Use a released version instead — %s — or acknowledge this one:\n\n"+
 					"  provider %q {\n    %s = %q\n  }\n\n"+
-					"The acknowledgement names one version on purpose, so the next prerelease asks again.",
+					"Setting that accepts the instability: this version is not covered by the "+
+					"provider's backward-compatibility guarantees, and the next prerelease may "+
+					"rename, reshape or remove any part of the schema it exposes. The "+
+					"acknowledgement names one version on purpose, so that next prerelease asks "+
+					"again rather than inheriting this answer.",
 				p.version, `version = "~> 0.0"`, TypeName, PreReleaseArgument, p.version),
 		)
 	default:

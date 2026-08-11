@@ -212,6 +212,11 @@ func TestProviderWarnsThatItIsAlpha(t *testing.T) {
 	require.Contains(t, resp.Schema.MarkdownDescription, "~> **"+AlphaHeadline+"**")
 	require.Contains(t, resp.Schema.MarkdownDescription, AlphaDetail)
 
+	// The notice says what acknowledging a prerelease accepts, not only that one
+	// has to be acknowledged.
+	require.Contains(t, AlphaDetail, "Setting it accepts that instability")
+	require.Contains(t, AlphaDetail, "NOT covered by the provider's backward-compatibility guarantees")
+
 	readme, err := os.ReadFile(filepath.Join("..", "..", "README.md"))
 	require.NoError(t, err)
 
@@ -284,6 +289,19 @@ func TestPreReleaseHasToBeAcknowledged(t *testing.T) {
 	require.Contains(t, detail, PreReleaseArgument+` = "1.0.0-alpha.1"`)
 	require.Contains(t, detail, `version = "~> 0.0"`, "the released line is the way out")
 	require.Nil(t, unacknowledged.ResourceData, "nothing is configured behind the gate")
+
+	// The gate is an acceptance, not a checkbox: what setting it costs has to be
+	// said where it is asked for, the same way the raw opt-ins say it.
+	require.Contains(t, detail, "accepts the instability")
+	require.Contains(t, detail, "not covered by the provider's backward-compatibility guarantees")
+
+	schemaResp := &provider.SchemaResponse{}
+	newProvider(t).Schema(context.Background(), provider.SchemaRequest{}, schemaResp)
+
+	argument, ok := schemaResp.Schema.Attributes[PreReleaseArgument]
+	require.True(t, ok)
+	require.Contains(t, argument.GetDescription(), "explicit acceptance of the instability")
+	require.Contains(t, argument.GetDescription(), "NOT covered by the provider's backward-compatibility guarantees")
 
 	// The right version opens the gate, and only that version.
 	acknowledged := configure(t, "1.0.0-alpha.1", "1.0.0-alpha.1")
