@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"infiot.com/infiot/mgmt/tf-provider/internal/tfjson"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/tfjson"
 )
 
 // Mode selects how an API document combines with the value Terraform already

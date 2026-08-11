@@ -28,7 +28,9 @@ override.tf.json
 /internal/gen/
 /internal/bwanclient/mock/
 /internal/registry/registry_gen.go
-/docs/
+# /docs/ is deliberately NOT ignored. It is generated, but the Terraform registry
+# serves it straight from the tagged tree, so it has to be committed. `make
+# docs-check` is what keeps it honest.
 /docs_html/
 
 # Go
@@ -86,9 +88,10 @@ coverage.html
 debug
 pprof
 
-# Generated code
-*generated.go
-*gen.go
+# Generated code is ignored by exact path at the top of this file. A bare
+# "*gen.go" was here too, which matches any file whose name merely ends that way
+# — tokengen.go, pathgen.go — and would silently leave a hand-written one
+# untracked. It currently protects nothing the specific rules do not.
 
 # Dependency management
 vendor/

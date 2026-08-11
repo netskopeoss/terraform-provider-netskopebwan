@@ -9,8 +9,8 @@ import (
 
 	"go.uber.org/mock/gomock"
 
-	"infiot.com/infiot/mgmt/tf-provider/internal/bwanclient"
-	mock_bwanclient "infiot.com/infiot/mgmt/tf-provider/internal/bwanclient/mock"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/bwanclient"
+	mock_bwanclient "github.com/netskopeoss/terraform-provider-netskopebwan/internal/bwanclient/mock"
 )
 
 // newAPI returns a mock of the whole API, plus the provider data a resource or

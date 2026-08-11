@@ -13,6 +13,13 @@ inputs:
       restores from.
     required: false
     default: "false"
+  save-go-cache:
+    description: >-
+      Whether this job may write the Go module and build caches. Same reasoning
+      as save-nix-store: a trunk branch writes the entry, everything else reads
+      it.
+    required: false
+    default: "false"
 
 runs:
   using: composite
@@ -59,11 +66,37 @@ runs:
         done
         devenv shell true
 
+    # The key carries the run id, which looks odd but is the point: actions/cache
+    # only writes at the end of a job whose primary key MISSED. Keyed on go.sum
+    # alone the key hits on every run between dependency bumps, so nothing is
+    # ever written back and the build cache stays frozen at whatever the first
+    # run after a bump happened to compile. Since the provider's own packages are
+    # regenerated every run, those are exactly the objects that never get
+    # persisted. A unique key always misses, so the entry is always refreshed,
+    # and restore-keys fall back to the newest previous one.
     - name: Cache Go modules and build output
+      if: inputs.save-go-cache == 'true'
       uses: actions/cache@v4
       with:
         path: |
           ~/go/pkg/mod
           ~/.cache/go-build
-        key: go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('go.sum') }}
-        restore-keys: go-${{ runner.os }}-${{ runner.arch }}-
+        key: go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('go.sum') }}-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: |
+          go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('go.sum') }}-
+          go-${{ runner.os }}-${{ runner.arch }}-
+
+    # Everything that is not a trunk branch reads the cache without writing it,
+    # so a pull request cannot spend the repository's cache budget on an entry
+    # no other job will use.
+    - name: Restore Go modules and build output
+      if: inputs.save-go-cache != 'true'
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('go.sum') }}-
+        restore-keys: |
+          go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('go.sum') }}-
+          go-${{ runner.os }}-${{ runner.arch }}-

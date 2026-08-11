@@ -1,4 +1,4 @@
-# terraform-provider-bwan
+# terraform-provider-netskopebwan
 
 Terraform provider for Netskope Borderless WAN, generated from the BWAN v2
 OpenAPI document that the REST gateway itself serves.
@@ -9,17 +9,20 @@ adding an entry to [`generator_config.yml`](generator_config.yml).
 ## How it is generated
 
 ```
-//mgmt/go/cmd/rest-gateway/internal/v2/rest:openapi-build   the bundled v2 spec
+   openapi.json                                the BWAN v2 spec, as the API serves it
         │
         ▼  tfgen prep
-   openapi_tf_gen.yaml                                      spec the generators can map
+   openapi_tf_gen.yaml                         spec the generators can map
         │
         ▼  tfplugingen-openapi + generator_config.yml
-   provider_code_spec_gen.json                              provider code specification
+   provider_code_spec_gen.json                 provider code specification
         │
         ├──▶ tfplugingen-framework  ──▶  internal/gen/{resources,datasources}
         └──▶ tfgen registry         ──▶  internal/registry/registry_gen.go
 ```
+
+`make generate` runs all of it. The spec is downloaded from `OPENAPI_SPEC_URL`,
+which defaults to the tenant the Makefile names and can be pointed elsewhere.
 
 The two middle steps are HashiCorp's
 [OpenAPI provider spec generator](https://developer.hashicorp.com/terraform/plugin/code-generation/openapi-generator)
@@ -62,7 +65,7 @@ ipv6. Terraform has no type for that, so there are two ways out and
 object. An entry claiming a `variant` gets the shape to itself:
 
 ```hcl
-resource "bwan_tag_wanlink" "probe" {
+resource "netskopebwan_tag_wanlink" "probe" {
   name      = "probe"
   frequency = 60          # only a wanlink tag has one
 }
@@ -78,11 +81,11 @@ others.
 No claim is made, so the shapes become sibling blocks of which exactly one is set:
 
 ```hcl
-resource "bwan_link_monitor" "probe" {
+resource "netskopebwan_link_monitor" "probe" {
   fqdn = { fqdn = "probe.example.com" }
 }
 
-resource "bwan_cloud_account" "aws" {
+resource "netskopebwan_cloud_account" "aws" {
   name           = "production"
   cloud_provider = "aws"
   config         = { aws = { key_id = "...", secret_access_key = "..." } }
@@ -94,7 +97,7 @@ set block back out when it builds a request and nests the matching one again whe
 it reads a response. `terraform validate` reports a set of blocks with none or
 several set, which is the constraint the schema could not carry.
 
-`bwan_cloud_account` also shows the one rename in the provider: Terraform reserves
+`netskopebwan_cloud_account` also shows the one rename in the provider: Terraform reserves
 `provider` as an attribute name and rejects the whole provider over it, so the
 field is exposed as `cloud_provider` and translated on the wire.
 
@@ -115,8 +118,8 @@ terms, but it maps a `oneOf` to a Go sum type and the provider needs the flatten
 union `tfgen prep` produces, so the two disagree about the shape of the same
 schema. Bridging them would mean generated glue for all 299 operations whose only
 job is to convert a document into a typed struct and straight back again. When the
-first hand-written resource lands — a typed `bwan_gateway` replacing
-`bwan_gateway_raw`, say — a generated client earns its keep, and it can sit behind
+first hand-written resource lands — a typed `netskopebwan_gateway` replacing
+`netskopebwan_gateway_raw`, say — a generated client earns its keep, and it can sit behind
 the same interface.
 
 ## Building
@@ -129,31 +132,55 @@ devenv shell
 ```
 
 ```bash
-heph run //mgmt/tf-provider:provider          # the plugin binary
-heph query //mgmt/tf-provider/... | grep go_test | heph run -
-heph run //mgmt/tf-provider:lint
-heph run //mgmt/tf-provider:terraform-fix     # format the examples
-heph run //mgmt/tf-provider:docs              # the registry documentation, markdown
-heph run //mgmt/tf-provider:docs-html         # the same thing as a browsable site
-heph run //mgmt/tf-provider:docs-serve        # read it at localhost:8080
+make generate         # every generator: spec download through mocks
+make provider         # the plugin binary
+make test             # tests, with the race detector
+make lint
+make terraform        # format the examples
+make docs             # the registry documentation, markdown
+make docs-check       # fail if the committed docs are out of date
+make docs-html        # the same thing as a browsable site
+make docs-serve       # read it at localhost:8080
+make ci               # everything above, in the order CI runs it
 ```
 
-`:docs` produces what the registry consumes, which is markdown. `:docs-html`
+`make generate` has to come first in a fresh checkout: the packages `main.go`
+imports do not exist until it has run, so nothing compiles before it.
+
+`make docs` produces what the registry consumes, which is markdown. `docs-html`
 renders that into a site with a sidebar, a filter box and light and dark themes,
 because 92 pages of raw markdown in a browser is barely better than reading the
 files. `docs-serve` builds it and serves it, and takes a `PORT`.
 
-None of it needs a terraform binary, a plugin directory or the network:
+Neither needs a terraform binary, a plugin directory or the network:
 [`tools/tfdocs`](tools/tfdocs) reports the provider's own schema for
 `tfplugindocs` to render, and renders the result to HTML.
 
-Everything generated (`internal/gen`, `internal/bwanclient/mock`,
+Most generated files (`internal/gen`, `internal/bwanclient/mock`,
 `internal/registry/registry_gen.go`, `openapi_tf_gen.yaml`,
 `generator_config_gen.yml`, `provider_code_spec_gen.json`,
-`provider_schema_gen.json`, `docs`, `docs_html`) is a build output and is not
-checked in.
+`provider_schema_gen.json`, `docs_html`) are build outputs and are not checked
+in.
+
+**`docs/` is the exception.** It is generated too, but the Terraform registry
+serves it straight from the tagged tree, so it has to be committed. `make
+docs-check` regenerates it and fails if the result differs from what is in git;
+CI runs it on every push, so docs cannot drift from the schema.
 
 ## Using it
+
+The provider is published as
+[`netskopeoss/netskopebwan`](https://registry.terraform.io/providers/netskopeoss/netskopebwan):
+
+```hcl
+terraform {
+  required_providers {
+    netskopebwan = {
+      source = "netskopeoss/netskopebwan"
+    }
+  }
+}
+```
 
 `endpoint` and `token` default to `$BWAN_ENDPOINT` and `$BWAN_TOKEN`. The
 endpoint is the API base URL without the version prefix; the provider appends
@@ -166,11 +193,11 @@ A data source addressing a single object takes either its `id` or a `filter` in
 the API's filter syntax — exactly one of the two:
 
 ```hcl
-data "bwan_segment" "by_id" {
+data "netskopebwan_segment" "by_id" {
   id = "6501f0c2e4b0a1b2c3d4e5f6"
 }
 
-data "bwan_segment" "by_name" {
+data "netskopebwan_segment" "by_name" {
   filter = "name eq \"corporate\""
 }
 ```
@@ -193,17 +220,17 @@ Those objects carry a `_raw` suffix and are off until asked for:
 
 | Object | Opt-in | Why |
 | --- | --- | --- |
-| `bwan_gateway_raw`, `bwan_gateways_raw` | `enable_raw_gateway` | the whole device configuration is opaque |
-| `bwan_gateway_template_raw`, `bwan_gateway_templates_raw` | `enable_raw_gateway_template` | as above |
-| `bwan_policy_raw`, `bwan_policies_raw` | `enable_raw_policy` | its policy, destination and score configuration is opaque |
-| `bwan_client_template_raw`, `bwan_client_templates_raw` | `enable_raw_client_template` | the probe shorthand cannot be expressed |
+| `netskopebwan_gateway_raw`, `netskopebwan_gateways_raw` | `enable_raw_gateway` | the whole device configuration is opaque |
+| `netskopebwan_gateway_template_raw`, `netskopebwan_gateway_templates_raw` | `enable_raw_gateway_template` | as above |
+| `netskopebwan_policy_raw`, `netskopebwan_policies_raw` | `enable_raw_policy` | its policy, destination and score configuration is opaque |
+| `netskopebwan_client_template_raw`, `netskopebwan_client_templates_raw` | `enable_raw_client_template` | the probe shorthand cannot be expressed |
 
 **Enabling one is an explicit opt-out of compatibility.** These resources and data
 sources are *not* covered by the provider's backward-compatibility guarantees,
 their schemas *will* change without a major release, and they *will* be removed
 once the objects can be modelled properly. The `_raw` suffix is what keeps the
-plain name free for that: `bwan_gateway` has already been taken by the typed form
-of a gateway, and `bwan_policy`, `bwan_gateway_template` and `bwan_client_template`
+plain name free for that: `netskopebwan_gateway` has already been taken by the typed form
+of a gateway, and `netskopebwan_policy`, `netskopebwan_gateway_template` and `netskopebwan_client_template`
 are still free for theirs.
 
 Without the opt-in, planning one of these fails with a diagnostic naming the
@@ -225,6 +252,42 @@ not make an object raw, because there is nothing better to roll out for it.
   other read-only report endpoints that have no object behind them.
 - **The shorthand form of a `oneOf` that mixes an object with a scalar.** Only the
   object form is exposed; it can always express the shorthand too.
+
+## Releasing
+
+A release is a tag. Pushing one matching `v*` is what triggers
+[the release workflow](.github/workflows/release.yml), which regenerates the
+provider, checks the committed docs are current, then builds and signs the
+release with [goreleaser](.goreleaser.yml).
+
+```bash
+make release VERSION=v1.2.3           # a release
+make release VERSION=v1.2.3-alpha.1   # a prerelease
+```
+
+Nothing about that is undoable once the registry has picked the version up, so
+the target refuses to run on anything it is not sure about. It requires the
+version to be a `v`-prefixed semver, the working tree to be clean, the tag to be
+absent both locally and on the remote, and `HEAD` to match its upstream — then
+it prints what it is about to publish and makes you type the tag out before it
+creates or pushes anything. If the push fails it removes the local tag so a
+retry is not blocked by the tag it just made.
+
+The registry only accepts a version whose assets are named for the repository,
+so three files exist purely to satisfy it and are worth knowing about:
+
+| Path | |
+| --- | --- |
+| `.goreleaser.yml` | builds the per-platform zips, the checksums and the detached GPG signature. `project_name` is pinned because the module path is not the repository name |
+| `terraform-registry-manifest.json` | declares protocol `6.0`, which is what terraform-plugin-framework speaks. Published as `..._manifest.json` |
+| `LICENSE` | the registry will not publish a provider without one |
+
+The provider's name is not ours to choose: the registry derives it from the
+repository, so `netskopebwan` is what prefixes every resource type, what
+`tfplugindocs` writes into `docs/`, and what every release asset is named. It
+lives in `PROVIDER_NAME` in the [`Makefile`](Makefile), `TypeName` in
+[`internal/provider`](internal/provider/provider.go) and `address` in
+[`main.go`](main.go).
 
 ## Layout
 

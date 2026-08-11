@@ -1,7 +1,8 @@
 name: Release Terraform Provider
 
 # This GitHub action creates a release when a tag that matches the pattern
-# "v*" (e.g. v0.1.0) is created.
+# "v*" (e.g. v0.1.0) is created. `make release` is the supported way to make
+# one of those tags.
 on:
   push:
     tags:
@@ -10,6 +11,13 @@ on:
 
 permissions:
   contents: write
+
+# Every run step below is a devenv shell, exactly as in ci.yml: the provider
+# cannot be built without the generator toolchain, and pinning it in one place
+# is what stops a release being built by a different Go than CI tested with.
+defaults:
+  run:
+    shell: devenv shell bash -- -e {0}
 
 jobs:
   goreleaser:
@@ -20,20 +28,40 @@ jobs:
         with:
           # Allow goreleaser to access older tag information.
           fetch-depth: 0
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: 'go.mod'
+
+      - name: Setup Nix + devenv
+        uses: ./.github/actions/setup-nix
+
+      # The packages main.go imports — internal/gen, internal/registry and the
+      # client mock — are generated and not committed, so a fresh checkout does
+      # not compile. goreleaser would fail here rather than in the build.
+      - name: Generate
+        env:
+          OPENAPI_SPEC_URL: ${{ vars.OPENAPI_SPEC_URL }}
+        run: make generate
+
+      # The registry serves docs/ from this tag. If it has drifted from the
+      # schema, stop now: a published version's docs cannot be corrected
+      # without cutting another one.
+      - name: Check docs are up to date
+        run: make docs-check
+
       - name: Import GPG key
         uses: infiotinc/ghaction-import-gpg@92a10f995fd20944e1cae9a2e86e62dafe4f6171
         id: import_gpg
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
+
+      # Installed outside the workspace: goreleaser refuses to release from a
+      # dirty tree, and an untracked binary in the repo would read as dirty.
       - name: Install GoReleaser
+        env:
+          GOBIN: ${{ runner.temp }}/bin
         run: go install github.com/goreleaser/goreleaser/v2@latest
+
       - name: Run GoReleaser
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
-        run: |
-          goreleaser release --clean
+        run: ${{ runner.temp }}/bin/goreleaser release --clean

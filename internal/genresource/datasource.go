@@ -11,8 +11,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"infiot.com/infiot/mgmt/tf-provider/internal/bwanclient"
-	"infiot.com/infiot/mgmt/tf-provider/internal/tfschema"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/bwanclient"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/tfschema"
 )
 
 // DataSourceDefinition describes one generated data source: the schema to expose

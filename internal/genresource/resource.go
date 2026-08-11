@@ -13,8 +13,8 @@ import (
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"infiot.com/infiot/mgmt/tf-provider/internal/bwanclient"
-	"infiot.com/infiot/mgmt/tf-provider/internal/tfschema"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/bwanclient"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/tfschema"
 )
 
 // Definition describes one generated resource: the schema to expose and the API

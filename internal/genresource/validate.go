@@ -8,7 +8,7 @@ import (
 	fwpath "github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"infiot.com/infiot/mgmt/tf-provider/internal/tfschema"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/tfschema"
 )
 
 // validateVariants reports a set of alternative blocks that does not have exactly

@@ -1,5 +1,5 @@
-// Command terraform-provider-bwan serves the Netskope Borderless WAN Terraform
-// provider.
+// Command terraform-provider-netskopebwan serves the Netskope Borderless WAN
+// Terraform provider.
 //
 // Its resources and data sources are generated from the BWAN v2 OpenAPI
 // document; see README.md for how the pipeline fits together.
@@ -12,12 +12,12 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 
-	"infiot.com/infiot/mgmt/tf-provider/internal/provider"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/provider"
 )
 
 // address is how Terraform refers to this provider in a configuration's
 // required_providers block.
-const address = "registry.terraform.io/netskope/bwan"
+const address = "registry.terraform.io/netskopeoss/netskopebwan"
 
 // version is stamped at build time; it only ends up in diagnostics and the
 // User-Agent header.

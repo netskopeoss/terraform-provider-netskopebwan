@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"infiot.com/infiot/mgmt/tf-provider/internal/tfjson"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/tfjson"
 )
 
 // Body builds the JSON document for a write request from a Terraform value.

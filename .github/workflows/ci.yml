@@ -33,6 +33,7 @@ jobs:
         uses: ./.github/actions/setup-nix
         with:
           save-nix-store: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/v1' }}
+          save-go-cache: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/v1' }}
 
       # generate comes first because the packages the provider imports are
       # generated: internal/gen, internal/registry and the client mock do not
@@ -62,10 +63,11 @@ jobs:
       - name: Build provider
         run: make provider
 
-      # The registry serves this markdown, so a change that breaks rendering
-      # should fail here and not at publish time.
-      - name: Generate docs
-        run: make docs
+      # The registry serves this markdown straight from the tagged tree, so it
+      # has to be committed and current. Failing here beats discovering at
+      # publish time that docs/ describes an older schema.
+      - name: Check docs are up to date
+        run: make docs-check
 
       - name: Upload coverage
         if: always()

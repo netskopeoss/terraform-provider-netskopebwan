@@ -72,6 +72,9 @@ func TestGatedResourceRefusesAtPlanTime(t *testing.T) {
 
 	require.Equal(t, "Resource bwan_thing_raw is not enabled", errs[0].Summary())
 	require.Contains(t, errs[0].Detail(), "enable_raw_thing = true")
+	// The example block has to name the provider the practitioner actually
+	// writes, which is the prefix of the type rather than a hardcoded string.
+	require.Contains(t, errs[0].Detail(), `provider "bwan" {`)
 	require.Contains(t, errs[0].Detail(), "NOT covered by the provider's backward-compatibility")
 	require.Contains(t, errs[0].Detail(), "WILL be removed once a typed replacement ships")
 }

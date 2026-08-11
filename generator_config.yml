@@ -3,8 +3,8 @@
 # https://developer.hashicorp.com/terraform/plugin/code-generation/openapi-generator
 #
 # The input spec is the normalised BWAN v2 OpenAPI document produced by
-# //mgmt/tf-provider/tools/specprep, so path parameters appear here with "_"
-# rather than the "-" used by the API itself.
+# `tfgen prep`, so path parameters appear here with "_" rather than the "-" used
+# by the API itself.
 #
 # This file is the single source of truth for what the provider exposes: the
 # resource and data source registry is generated from it by `tfgen registry`.
@@ -40,7 +40,7 @@
 #
 # Site commands are intentionally absent: running a command is an action, not a
 # managed object. The v2 API has no separate site object — a gateway is the
-# site-level object — so bwan_gateway_raw is what manages a site.
+# site-level object — so netskopebwan_gateway_raw is what manages a site.
 
 # Terraform reserves a handful of attribute names at the root of a resource, and a
 # schema declaring one is rejected outright — taking the whole provider down with
@@ -51,7 +51,7 @@ x_terraform_renames:
   provider: cloud_provider
 
 provider:
-  name: bwan
+  name: netskopebwan
 
 resources:
   address_group:

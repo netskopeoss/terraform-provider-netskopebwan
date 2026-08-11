@@ -13,7 +13,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"infiot.com/infiot/mgmt/tf-provider/internal/bwanclient"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/bwanclient"
 )
 
 // idAttribute names the attribute holding the identity the API assigns.

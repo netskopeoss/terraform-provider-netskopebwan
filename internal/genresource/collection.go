@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/url"
 
-	"infiot.com/infiot/mgmt/tf-provider/internal/bwanclient"
-	"infiot.com/infiot/mgmt/tf-provider/internal/tfjson"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/bwanclient"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/tfjson"
 )
 
 // Field names of the paginated collection envelope every list endpoint returns.

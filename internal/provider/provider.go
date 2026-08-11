@@ -15,9 +15,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"infiot.com/infiot/mgmt/tf-provider/internal/bwanclient"
-	"infiot.com/infiot/mgmt/tf-provider/internal/genresource"
-	"infiot.com/infiot/mgmt/tf-provider/internal/registry"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/bwanclient"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/genresource"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/registry"
 )
 
 // Environment variables standing in for the provider arguments of the same name,
@@ -27,8 +27,11 @@ const (
 	tokenEnv    = "BWAN_TOKEN"
 )
 
-// TypeName prefixes every resource and data source this provider exposes.
-const TypeName = "bwan"
+// TypeName prefixes every resource and data source this provider exposes. It
+// has to match the name the registry derives from the repository
+// (terraform-provider-netskopebwan), because that is what decides which
+// resource a docs/ page belongs to.
+const TypeName = "netskopebwan"
 
 // New returns the provider factory the plugin server is started with.
 func New(version string) func() provider.Provider {
@@ -146,7 +149,7 @@ func (p *bwanProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		Token:              token,
 		Timeout:            timeout,
 		InsecureSkipVerify: insecure.ValueBool(),
-		UserAgent:          "terraform-provider-bwan/" + p.version,
+		UserAgent:          "terraform-provider-netskopebwan/" + p.version,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Could not configure the BWAN client", err.Error())

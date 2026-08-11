@@ -35,7 +35,7 @@ func runHTML(args []string) error {
 	flags := flag.NewFlagSet("html", flag.ExitOnError)
 	in := flags.String("in", "", "directory of markdown tfplugindocs generated")
 	out := flags.String("out", "", "directory to write the HTML site to")
-	title := flags.String("title", "bwan provider", "the site's title")
+	title := flags.String("title", "netskopebwan provider", "the site's title")
 
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -158,7 +158,7 @@ func sectionOf(relative string) (string, int) {
 
 func titleOf(front, relative string) string {
 	if value := frontMatterValue(front, "page_title"); value != "" {
-		// A registry page title reads "bwan_segment Resource - bwan"; the sidebar
+		// A registry page title reads "netskopebwan_segment Resource - netskopebwan"; the sidebar
 		// already says which section it is in.
 		if cut, _, ok := strings.Cut(value, " Resource - "); ok {
 			return cut

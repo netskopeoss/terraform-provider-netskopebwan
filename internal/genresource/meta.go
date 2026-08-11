@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 
-	"infiot.com/infiot/mgmt/tf-provider/internal/bwanclient"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/bwanclient"
 )
 
 // Meta is what the provider hands to every resource and data source once it has
@@ -53,14 +53,26 @@ func rawGateError(kind, typeName, feature string) (string, string) {
 	detail := fmt.Sprintf(
 		"%s carries its configuration as an opaque JSON document, which Terraform cannot validate or diff field by field.\n\n"+
 			"To use it, set `%s = true` on the provider:\n\n"+
-			"    provider \"bwan\" {\n      %s = true\n    }\n\n"+
+			"    provider \"%s\" {\n      %s = true\n    }\n\n"+
 			"Understand what that opts you in to: %s objects are NOT covered by the provider's backward-compatibility "+
 			"guarantees, their schemas WILL change without a major release, and they WILL be removed once a typed "+
 			"replacement ships. The typed replacement will take the name without the \"_raw\" suffix.",
-		typeName, argument, argument, featureLabel(feature),
+		typeName, argument, providerNameOf(typeName), argument, featureLabel(feature),
 	)
 
 	return summary, detail
+}
+
+// providerNameOf recovers the provider block's name from a resource type. Every
+// type is prefixed with it, so taking the prefix keeps the example in the
+// diagnostic correct without threading Meta.TypeName through the gate.
+func providerNameOf(typeName string) string {
+	name, _, found := strings.Cut(typeName, "_")
+	if !found {
+		return typeName
+	}
+
+	return name
 }
 
 func featureLabel(feature string) string {

@@ -12,9 +12,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/stretchr/testify/require"
 
-	"infiot.com/infiot/mgmt/tf-provider/internal/genresource"
-	"infiot.com/infiot/mgmt/tf-provider/internal/registry"
-	"infiot.com/infiot/mgmt/tf-provider/internal/tfschema"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/genresource"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/registry"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/tfschema"
 )
 
 func newProvider(t *testing.T) provider.Provider {

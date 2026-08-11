@@ -24,7 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
-	"infiot.com/infiot/mgmt/tf-provider/internal/provider"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/provider"
 )
 
 func main() {
@@ -53,7 +53,7 @@ func runSchema(args []string) error {
 	flags := flag.NewFlagSet("schema", flag.ExitOnError)
 	// tfplugindocs looks the schema up by the provider's short name, or by that name
 	// under the hashicorp namespace, and nothing else. The short name it is.
-	address := flags.String("address", "bwan", "the key the provider's schema is filed under")
+	address := flags.String("address", "netskopebwan", "the key the provider's schema is filed under")
 	version := flags.String("version", "dev", "the provider version to report")
 	out := flags.String("out", "", "path to write the schema JSON to")
 

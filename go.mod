@@ -1,4 +1,4 @@
-module infiot.com/infiot/mgmt/tf-provider
+module github.com/netskopeoss/terraform-provider-netskopebwan
 
 go 1.26.0
 

@@ -1,14 +1,14 @@
 # A gateway is the site-level object. The API only exposes its configuration as
 # an opaque JSON document, so the resource has to be asked for explicitly.
 #
-# Enabling this opts out of compatibility: bwan_gateway_raw is NOT covered by the
+# Enabling this opts out of compatibility: netskopebwan_gateway_raw is NOT covered by the
 # provider's backward-compatibility guarantees, its schema WILL change without a
-# major release, and it WILL be removed once a typed bwan_gateway ships.
-provider "bwan" {
+# major release, and it WILL be removed once a typed netskopebwan_gateway ships.
+provider "netskopebwan" {
   enable_raw_gateway = true
 }
 
-resource "bwan_gateway_raw" "branch" {
+resource "netskopebwan_gateway_raw" "branch" {
   name  = "branch-01"
   model = "iot-3000"
 

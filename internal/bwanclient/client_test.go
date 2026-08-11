@@ -20,7 +20,7 @@ func newTestClient(t *testing.T, handler http.HandlerFunc) *Client {
 	client, err := New(Config{
 		Endpoint:   server.URL + "/api",
 		Token:      "secret-token",
-		UserAgent:  "terraform-provider-bwan/test",
+		UserAgent:  "terraform-provider-netskopebwan/test",
 		HTTPClient: server.Client(),
 	})
 	require.NoError(t, err)
@@ -70,7 +70,7 @@ func TestDoAddsVersionPrefixAndCredentials(t *testing.T) {
 	require.Equal(t, "/api/v2/segments", gotPath)
 	require.Equal(t, "filter=name+eq+x", gotQuery)
 	require.Equal(t, "Bearer secret-token", gotAuth)
-	require.Equal(t, "terraform-provider-bwan/test", gotAgent)
+	require.Equal(t, "terraform-provider-netskopebwan/test", gotAgent)
 	require.Equal(t, "application/json", gotType)
 	require.JSONEq(t, `{"name": "segment"}`, gotBody)
 }

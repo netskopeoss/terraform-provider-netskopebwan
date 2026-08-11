@@ -1,11 +1,20 @@
-.PHONY: help lint tfgen openapi provider resources-gen datasources-gen registry-gen mockgen terraform docs docs-html docs-serve tools generate test vet fmt-check terraform-check ci
+.PHONY: help lint tfgen openapi provider resources-gen datasources-gen registry-gen mockgen terraform docs docs-check docs-html docs-serve tools generate test vet fmt-check terraform-check ci release
 
 # Variables
 GOPATH ?= $(HOME)/go
 TOOLS_BIN ?= $(CURDIR)/.tools/bin
 export GOBIN := $(TOOLS_BIN)
 PATH := $(TOOLS_BIN):$(PATH)
-OPENAPI_SPEC_URL ?= https://sys.api.infiot.net/v2/openapi.json
+# CI forwards this from a repository variable, and a variable that is not set
+# there arrives as the empty string rather than not arriving at all. "?=" only
+# fills in a variable nothing has defined, and an empty environment variable
+# counts as defined, so on its own it would leave the URL empty and hand curl
+# nothing. Treat empty as unset.
+DEFAULT_OPENAPI_SPEC_URL := https://sys.api.infiot.net/v2/openapi.json
+OPENAPI_SPEC_URL ?= $(DEFAULT_OPENAPI_SPEC_URL)
+ifeq ($(strip $(OPENAPI_SPEC_URL)),)
+OPENAPI_SPEC_URL := $(DEFAULT_OPENAPI_SPEC_URL)
+endif
 OPENAPI_SPEC_FILE := openapi.json
 OPENAPI_TF_GEN_FILE := openapi_tf_gen.yaml
 GENERATOR_CONFIG_FILE := generator_config.yml
@@ -19,6 +28,13 @@ DOCS_DIR := ./docs
 DOCS_HTML_DIR := ./docs_html
 TFGEN := $(TOOLS_BIN)/tfgen
 PORT ?= 8080
+RELEASE_REMOTE ?= origin
+
+# The registry takes the provider's name from the repository, so this string is
+# not ours to choose: it is what prefixes every resource type, what tfplugindocs
+# writes into docs/, and what goreleaser names the release assets.
+PROVIDER_NAME := netskopebwan
+BINARY := terraform-provider-$(PROVIDER_NAME)
 
 # The generator toolchain comes from the devenv shell, which pins it in
 # devenv.nix. tfgen is the exception: it is built from this repository.
@@ -68,11 +84,14 @@ help:
 	@echo "  make ci                - What CI runs: generate, checks, build"
 	@echo "  make terraform         - Format Terraform files"
 	@echo "  make docs              - Generate Terraform docs"
+	@echo "  make docs-check        - Fail if the committed docs are out of date"
 	@echo "  make docs-html         - Generate HTML docs"
 	@echo "  make docs-serve        - Serve HTML docs on http://localhost:$(PORT)"
 	@echo "  make provider          - Build the Terraform provider"
 	@echo "  make clean             - Remove generated files"
 	@echo "  make all               - Build everything"
+	@echo "  make release VERSION=v1.2.3 - Tag and push a release (interactive)"
+	@echo "                           Prereleases: VERSION=v1.2.3-alpha.1"
 
 # Check that the toolchain the generators need is on PATH. Outside the devenv
 # shell it will not be, and a missing generator is much clearer said here than
@@ -136,7 +155,7 @@ registry-gen: provider-code-spec openapi $(TFGEN) $(GENERATOR_CONFIG_FILE)
 	mkdir -p $$(dirname $(REGISTRY_OUT))
 	$(TFGEN) registry -config $(GENERATOR_CONFIG_FILE) \
 	  -spec $(PROVIDER_CODE_SPEC_FILE) -openapi $(OPENAPI_TF_GEN_FILE) \
-	  -module infiot.com/infiot/mgmt/tf-provider -out $(REGISTRY_OUT)
+	  -module github.com/netskopeoss/terraform-provider-netskopebwan -out $(REGISTRY_OUT)
 
 # Generate mocks
 mockgen:
@@ -166,9 +185,19 @@ provider-schema:
 docs: provider-schema
 	@echo "Generating Terraform documentation..."
 	mkdir -p $(DOCS_DIR)
-	$(TFPLUGINDOCS) generate --provider-name bwan \
+	$(TFPLUGINDOCS) generate --provider-name $(PROVIDER_NAME) \
 	  --providers-schema $(PROVIDER_SCHEMA_FILE) \
 	  --rendered-website-dir $(DOCS_DIR)
+
+# The registry serves docs/ straight from the tagged tree, so what is committed
+# has to be what the generator produces. This fails if the two have drifted.
+docs-check: docs
+	@echo "Checking generated docs are committed..."
+	@if [ -n "$$(git status --porcelain -- $(DOCS_DIR))" ]; then \
+	  echo "docs/ is out of date. Run 'make docs' and commit the result:"; \
+	  git status --short -- $(DOCS_DIR); \
+	  exit 1; \
+	fi
 
 # Generate HTML docs
 docs-html: docs
@@ -178,13 +207,13 @@ docs-html: docs
 
 # Serve HTML docs
 docs-serve: docs-html
-	@echo "Serving the bwan provider docs on http://localhost:$(PORT)"
+	@echo "Serving the netskopebwan provider docs on http://localhost:$(PORT)"
 	cd $(DOCS_HTML_DIR) && python3 -m http.server $(PORT)
 
 # Build the Terraform provider
 provider:
 	@echo "Building Terraform provider..."
-	go build -o terraform-provider-bwan ./main.go
+	go build -o $(BINARY) ./main.go
 
 # Run linter
 lint:
@@ -210,6 +239,67 @@ fmt-check:
 	  echo "These files are not gofmt'd:"; echo "$$unformatted"; exit 1; \
 	fi
 
+# Cut a release: create an annotated tag and push it, which is what triggers
+# the release workflow. Pushing a tag is not undoable in any useful sense once
+# the workflow has published, so this deliberately refuses to run on anything
+# it is not sure about and makes you type the tag out before it does anything.
+release:
+	@set -e; \
+	if [ -z "$(VERSION)" ]; then \
+	  echo "VERSION is required, e.g. make release VERSION=v1.2.3"; \
+	  echo "Latest tag: $$(git tag --sort=-v:refname | head -1)"; \
+	  exit 1; \
+	fi; \
+	if ! printf '%s' "$(VERSION)" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$$'; then \
+	  echo "VERSION must be a v-prefixed semver, got '$(VERSION)'."; \
+	  echo "Releases:    v1.2.3"; \
+	  echo "Prereleases: v1.2.3-alpha.1, v1.2.3-beta1, v1.2.3-rc.2"; \
+	  echo "(the release workflow only fires on 'v*'; build metadata with '+' is not supported by the Terraform registry)"; \
+	  exit 1; \
+	fi; \
+	prerelease=""; \
+	case "$(VERSION)" in *-*) prerelease=" (prerelease)" ;; esac; \
+	if [ -n "$$(git status --porcelain)" ]; then \
+	  echo "Working tree is dirty. Commit or stash before releasing."; \
+	  git status --short; \
+	  exit 1; \
+	fi; \
+	if git rev-parse -q --verify "refs/tags/$(VERSION)" >/dev/null; then \
+	  echo "Tag $(VERSION) already exists locally."; exit 1; \
+	fi; \
+	echo "Fetching $(RELEASE_REMOTE)..."; \
+	git fetch --quiet --tags $(RELEASE_REMOTE); \
+	if git ls-remote --exit-code --tags $(RELEASE_REMOTE) "refs/tags/$(VERSION)" >/dev/null 2>&1; then \
+	  echo "Tag $(VERSION) already exists on $(RELEASE_REMOTE)."; exit 1; \
+	fi; \
+	branch=$$(git rev-parse --abbrev-ref HEAD); \
+	upstream=$$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true); \
+	if [ -z "$$upstream" ]; then \
+	  echo "Branch $$branch has no upstream. Push it before releasing."; exit 1; \
+	fi; \
+	if [ "$$(git rev-parse HEAD)" != "$$(git rev-parse "$$upstream")" ]; then \
+	  echo "HEAD does not match $$upstream. Push or pull before releasing."; exit 1; \
+	fi; \
+	echo; \
+	echo "About to tag and push:"; \
+	echo "  tag      $(VERSION)$$prerelease"; \
+	echo "  branch   $$branch ($$upstream)"; \
+	echo "  remote   $(RELEASE_REMOTE)"; \
+	echo "  commit   $$(git log -1 --format='%h %s')"; \
+	echo "  previous $$(git tag --sort=-v:refname | head -1)"; \
+	echo; \
+	echo "This publishes a release. Type the tag name to confirm, anything else aborts."; \
+	printf "> "; \
+	read confirm; \
+	if [ "$$confirm" != "$(VERSION)" ]; then echo "Aborted."; exit 1; fi; \
+	git tag -a "$(VERSION)" -m "$(VERSION)"; \
+	echo "Pushing $(VERSION) to $(RELEASE_REMOTE)..."; \
+	git push $(RELEASE_REMOTE) "refs/tags/$(VERSION)" || { \
+	  echo "Push failed, removing the local tag."; git tag -d "$(VERSION)"; exit 1; \
+	}; \
+	echo "Pushed. Watch the release run:"; \
+	echo "  gh run watch \$$(gh run list --workflow=release.yml --limit=1 --json databaseId --jq '.[0].databaseId')"
+
 # Clean up generated files
 clean:
 	@echo "Cleaning up generated files..."
@@ -217,14 +307,14 @@ clean:
 	  $(GENERATOR_CONFIG_GEN_FILE) $(PROVIDER_CODE_SPEC_FILE) \
 	  $(PROVIDER_SCHEMA_FILE) $(REGISTRY_OUT)
 	rm -rf $(OUT_DIR) $(MOCK_OUT) $(DOCS_DIR) $(DOCS_HTML_DIR) $(TOOLS_BIN)
-	rm -f coverage.out terraform-provider-bwan
+	rm -f coverage.out $(BINARY)
 
 # Produce every generated file the provider needs to compile
 generate: resources-gen datasources-gen registry-gen mockgen
 
 # What CI runs, in the same order. Nothing here compiles before generate,
 # because the packages the provider imports do not exist in a fresh checkout.
-ci: generate fmt-check terraform-check vet lint test provider docs
+ci: generate fmt-check terraform-check vet lint test provider docs-check
 
 # Build everything
 all: generate lint terraform provider docs
