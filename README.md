@@ -136,7 +136,7 @@ the same interface.
 ## Building
 
 Enter the project shell first to get Go, Terraform, the HashiCorp generators,
-`mockgen`, `golangci-lint`, Python and the local helper tools:
+`mockgen`, `golangci-lint`, `goreleaser`, Python and the local helper tools:
 
 ```bash
 devenv shell

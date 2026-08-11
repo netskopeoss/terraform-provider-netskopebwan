@@ -57,6 +57,13 @@ in
     pkgs.terraform-plugin-docs
     tfplugingen-openapi
     tfplugingen-framework
+
+    # goreleaser builds the release, and it does so by shelling out to the go
+    # above, so it belongs to the same pinned toolchain as everything else. The
+    # release workflow used to `go install ...@latest` it, which left the one
+    # tool that decides what a published version contains free to change between
+    # two tags with no diff in this repository.
+    pkgs.goreleaser
   ];
 
   env.GOTOOLCHAIN = "auto";

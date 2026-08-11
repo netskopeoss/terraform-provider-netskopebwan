@@ -53,19 +53,15 @@ jobs:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
 
-      # Installed outside the workspace: goreleaser refuses to release from a
-      # dirty tree, and an untracked binary in the repo would read as dirty.
+      # goreleaser comes from the devenv shell, pinned by devenv.lock like go
+      # itself, so the tool that decides what a published version contains is
+      # fixed by this repository rather than resolved at release time.
       #
-      # GOBIN is set on the command and not in `env:`, because every step here
-      # runs through the devenv shell and its enterShell exports a GOBIN of its
-      # own — pointing into the workspace, for the tfgen it builds. A step-level
-      # `env:` is applied before that export and loses to it, which installed
-      # goreleaser somewhere this workflow then could not find.
-      - name: Install GoReleaser
-        run: GOBIN=${{ runner.temp }}/bin go install github.com/goreleaser/goreleaser/v2@latest
-
+      # This is also why goreleaser/goreleaser-action is not used: a `uses:`
+      # step runs on the host runner, outside the shell set as the default
+      # above, and there is no other go on this runner to build with.
       - name: Run GoReleaser
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
-        run: ${{ runner.temp }}/bin/goreleaser release --clean
+        run: goreleaser release --clean
