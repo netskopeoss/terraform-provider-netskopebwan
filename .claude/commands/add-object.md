@@ -51,11 +51,12 @@ distinctive fields).
 
 ## 4. Example and docs
 
-`make examples` writes a minimal example and an import command for anything that
-has none. Read it. If the minimal version is useless — the interesting arguments
-are all optional, as with a cloud account's credentials — write the example by
-hand in `examples/{resources,data-sources}/netskopebwan_<name>/`; hand-written
-files are never overwritten.
+`make examples` writes a minimal example and an import command for the new object,
+and rewrites the existing ones so they follow the schema. Read what it produced.
+Every example in the repository is generated; if one needs to say more than the
+generator can, either teach the generator the rule — a block that requires
+nothing shows what it accepts instead, for example — or remove the notice at the
+top of that file, which takes it out of the generator's hands for good.
 
 Then `make docs` and commit `docs/` and `examples/` with the change.
 

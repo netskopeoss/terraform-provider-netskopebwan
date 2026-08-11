@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -169,6 +170,83 @@ func TestVariantBlocksGetOneFormSet(t *testing.T) {
 
 	require.Contains(t, rendered, "aws = {")
 	require.NotContains(t, rendered, "azure", "exactly one form is set, not both")
+
+	// The chosen form requires nothing, and an empty block says less than nothing —
+	// a cloud account's credentials are all optional and are the point of it.
+	require.Contains(t, rendered, `key_id = "<key_id>"`)
+}
+
+// TestIdsLookLikeIdsWhereTheyAreOne covers the difference between an argument
+// pointing at another object and one that merely ends in "_id".
+func TestIdsLookLikeIdsWhereTheyAreOne(t *testing.T) {
+	ctx := context.Background()
+
+	attributes := map[string]exampleAttribute{
+		"group_id": {name: "group_id", attribute: rschema.StringAttribute{Required: true}},
+		"config": {name: "config", attribute: rschema.SingleNestedAttribute{
+			Required:   true,
+			Attributes: map[string]rschema.Attribute{"key_id": rschema.StringAttribute{Required: true}},
+		}},
+	}
+
+	rendered := arguments(ctx, attributes, "", nil, nil)
+
+	require.Contains(t, rendered, `group_id = "`+idExample+`"`, "a reference is worth showing as one")
+	require.Contains(t, rendered, `key_id = "<key_id>"`, "an access key is not an object in this API")
+}
+
+// TestGeneratedExamplesAreRewrittenAndHandWrittenOnesAreNot is the property that
+// makes generating examples worth doing: a generated one follows the schema, so a
+// spec change fixes the documentation instead of quietly falsifying it, while
+// anything somebody wrote survives untouched.
+func TestGeneratedExamplesAreRewrittenAndHandWrittenOnesAreNot(t *testing.T) {
+	dir := t.TempDir()
+
+	fresh := filepath.Join(dir, "resource.tf")
+
+	result, err := writeExample(fresh, "resource \"a\" \"b\" {}\n")
+	require.NoError(t, err)
+	require.Equal(t, written, result)
+
+	content, err := os.ReadFile(fresh)
+	require.NoError(t, err)
+	require.True(t, strings.HasPrefix(string(content), generatedMarker), "a generated example says so")
+
+	// The same example again is the same file, and a changed one is rewritten.
+	result, err = writeExample(fresh, "resource \"a\" \"b\" {}\n")
+	require.NoError(t, err)
+	require.Equal(t, refreshed, result)
+
+	result, err = writeExample(fresh, "resource \"a\" \"b\" {\n  name = \"moved\"\n}\n")
+	require.NoError(t, err)
+	require.Equal(t, refreshed, result)
+
+	content, err = os.ReadFile(fresh)
+	require.NoError(t, err)
+	require.Contains(t, string(content), `name = "moved"`, "the schema moved, so the example did")
+
+	// An example without the notice belongs to whoever wrote it.
+	own := filepath.Join(dir, "own.tf")
+	require.NoError(t, os.WriteFile(own, []byte("# mine\nresource \"a\" \"b\" {}\n"), 0o644))
+
+	result, err = writeExample(own, "resource \"generated\" \"x\" {}\n")
+	require.NoError(t, err)
+	require.Equal(t, kept, result)
+
+	content, err = os.ReadFile(own)
+	require.NoError(t, err)
+	require.Equal(t, "# mine\nresource \"a\" \"b\" {}\n", string(content))
+
+	// An import command is a shell script, and says the same thing in its own
+	// comment syntax.
+	script := filepath.Join(dir, "import.sh")
+
+	_, err = writeExample(script, "terraform import a.b id\n")
+	require.NoError(t, err)
+
+	content, err = os.ReadFile(script)
+	require.NoError(t, err)
+	require.Equal(t, generatedNoticeShell+"terraform import a.b id\n", string(content))
 }
 
 // TestEveryObjectHasAnExample is what keeps the committed examples in step with

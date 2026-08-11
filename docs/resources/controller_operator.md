@@ -13,6 +13,8 @@ description: |-
 ## Example Usage
 
 ```terraform
+# Generated from the provider's schema: the arguments this object requires, with
+# placeholders to fill in. Remove these two lines to maintain the example by hand.
 resource "netskopebwan_controller_operator" "example" {
   default      = false
   display_name = "example"
@@ -64,5 +66,6 @@ Import is supported using the following syntax:
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
+# Generated from the provider's schema. Remove this line to maintain it by hand.
 terraform import netskopebwan_controller_operator.example <id>
 ```

@@ -13,6 +13,8 @@ description: |-
 ## Example Usage
 
 ```terraform
+# Generated from the provider's schema: the arguments this object requires, with
+# placeholders to fill in. Remove these two lines to maintain the example by hand.
 # This object's whole configuration is a JSON document the API declares no
 # shape for, so the resource is off until enable_raw_policy is set on the
 # provider. That opts out of the provider's compatibility guarantees.
@@ -70,5 +72,6 @@ Import is supported using the following syntax:
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
+# Generated from the provider's schema. Remove this line to maintain it by hand.
 terraform import netskopebwan_policy_raw.example <id>
 ```

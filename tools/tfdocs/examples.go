@@ -41,8 +41,11 @@ import (
 // has to check against the schema below it, which is the situation this is meant
 // to fix.
 //
-// A file already on disk is never overwritten, so anything worth explaining
-// properly can be, and the generator fills in the long tail.
+// A generated example is rewritten on every run, so it follows the schema rather
+// than the schema it was first made from. An example without the notice at the top
+// of it was written by somebody and is never touched, which is how an object worth
+// explaining properly gets explained properly while the generator fills in the
+// long tail.
 const (
 	// exampleLabel names the resource or data source in every generated example.
 	exampleLabel = "example"
@@ -59,6 +62,28 @@ const (
 	filterAttribute = "filter"
 )
 
+// generatedNotice heads every generated example, and generatedMarker is how the
+// generator recognises its own work on the next run.
+//
+// The notice has to live in the file because tfplugindocs embeds the file
+// verbatim into the documentation page, so there is nowhere else to keep it that
+// the generator could read and a practitioner would not. It is therefore written
+// for both readers: it tells whoever finds the example on the registry why it is
+// as short as it is, and it tells whoever edits it here what happens next.
+//
+// Rewriting marked files is the point. An example is only worth generating if it
+// keeps up with the schema: the day the API moved a tag's fields into a nested
+// `config`, an example left alone would have gone on showing the old arguments,
+// the documentation would have embedded them, and every check would have passed.
+const (
+	generatedMarker = "# Generated from the provider's schema"
+
+	generatedNoticeHCL = generatedMarker + ": the arguments this object requires, with\n" +
+		"# placeholders to fill in. Remove these two lines to maintain the example by hand.\n"
+
+	generatedNoticeShell = generatedMarker + ". Remove this line to maintain it by hand.\n"
+)
+
 func runExamples(args []string) error {
 	flags := flag.NewFlagSet("examples", flag.ExitOnError)
 	out := flags.String("out", "", "directory to write examples to")
@@ -72,7 +97,7 @@ func runExamples(args []string) error {
 	}
 
 	ctx := context.Background()
-	written, kept := 0, 0
+	counts := map[outcome]int{}
 
 	for _, definition := range registry.Resources() {
 		typeName := provider.TypeName + "_" + definition.Name
@@ -87,12 +112,12 @@ func runExamples(args []string) error {
 			"resource.tf": resourceExample(ctx, typeName, definition, schema),
 			"import.sh":   importExample(typeName, definition),
 		} {
-			w, err := writeExample(filepath.Join(dir, base), content)
+			result, err := writeExample(filepath.Join(dir, base), content)
 			if err != nil {
 				return err
 			}
 
-			written, kept = written+w, kept+1-w
+			counts[result]++
 		}
 	}
 
@@ -104,7 +129,7 @@ func runExamples(args []string) error {
 			return err
 		}
 
-		w, err := writeExample(
+		result, err := writeExample(
 			filepath.Join(*out, "data-sources", typeName, "data-source.tf"),
 			dataSourceExample(ctx, typeName, definition, schema),
 		)
@@ -112,34 +137,76 @@ func runExamples(args []string) error {
 			return err
 		}
 
-		written, kept = written+w, kept+1-w
+		counts[result]++
 	}
 
-	fmt.Fprintf(os.Stderr, "tfdocs: examples: wrote %d, kept %d already present\n", written, kept)
+	fmt.Fprintf(os.Stderr, "tfdocs: examples: wrote %d, refreshed %d, kept %d hand-written\n",
+		counts[written], counts[refreshed], counts[kept])
 
 	return nil
 }
 
-// writeExample writes an example unless there is one there already, and reports
-// whether it wrote. A file on disk is either hand-written or a previous run's, and
-// both are left alone: regenerating never overwrites an explanation.
-func writeExample(path, content string) (int, error) {
-	switch _, err := os.Stat(path); {
-	case err == nil:
-		return 0, nil
-	case !os.IsNotExist(err):
-		return 0, fmt.Errorf("checking %s: %w", path, err)
+// outcome is what became of one example.
+type outcome int
+
+const (
+	// written is an example that did not exist.
+	written outcome = iota
+	// refreshed is a generated example brought back into step with the schema.
+	refreshed
+	// kept is an example somebody wrote, which the generator does not touch.
+	kept
+)
+
+// writeExample writes an example, unless the one on disk is hand-written.
+//
+// A file carrying the notice is the generator's own and is rewritten, so an
+// example follows the schema it was made from. A file without it was written by
+// somebody, and is left alone however much the schema has moved: that is the
+// escape hatch for the objects a minimal example does not serve.
+func writeExample(path, content string) (outcome, error) {
+	existing, err := os.ReadFile(path)
+
+	switch {
+	case err == nil && !strings.Contains(string(existing), generatedMarker):
+		return kept, nil
+	case err != nil && !os.IsNotExist(err):
+		return kept, fmt.Errorf("reading %s: %w", path, err)
+	}
+
+	content = notice(path) + content
+
+	if err == nil {
+		if string(existing) == content {
+			return refreshed, nil
+		}
+
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			return kept, fmt.Errorf("writing %s: %w", path, err)
+		}
+
+		return refreshed, nil
 	}
 
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return 0, fmt.Errorf("creating %s: %w", filepath.Dir(path), err)
+		return kept, fmt.Errorf("creating %s: %w", filepath.Dir(path), err)
 	}
 
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		return 0, fmt.Errorf("writing %s: %w", path, err)
+		return kept, fmt.Errorf("writing %s: %w", path, err)
 	}
 
-	return 1, nil
+	return written, nil
+}
+
+// notice is the header for an example, in the comment syntax of whatever the file
+// is.
+func notice(path string) string {
+	if filepath.Ext(path) == ".sh" {
+		return generatedNoticeShell
+	}
+
+	return generatedNoticeHCL
 }
 
 // resourceSchema asks a resource for the schema it exposes, which is the generated
@@ -184,6 +251,10 @@ func dataSourceSchema(ctx context.Context, definition genresource.DataSourceDefi
 type exampleAttribute struct {
 	name      string
 	attribute any
+	// forced marks an attribute the caller has decided to show even though the
+	// schema does not require it, which is how a block that requires nothing still
+	// comes out with something in it.
+	forced bool
 }
 
 type settable interface {
@@ -197,6 +268,10 @@ type stringValidators interface {
 }
 
 func (a exampleAttribute) required() bool {
+	if a.forced {
+		return true
+	}
+
 	value, ok := a.attribute.(settable)
 
 	return ok && value.IsRequired()
@@ -402,6 +477,34 @@ func requiredArguments(ctx context.Context, attributes map[string]exampleAttribu
 	return arguments(ctx, attributes, prefix, rawJSON, variants)
 }
 
+// settableArguments renders every argument a practitioner may set, for a block
+// that requires none of them. It is the fallback for arguments, not a second way
+// of writing an example: an object's top level is always what it requires.
+func settableArguments(ctx context.Context, attributes map[string]exampleAttribute, prefix string, rawJSON, variants []string) string {
+	optional := make(map[string]exampleAttribute, len(attributes))
+
+	for name, attribute := range attributes {
+		if value, ok := attribute.attribute.(settable); ok && value.IsOptional() {
+			optional[name] = attribute
+		}
+	}
+
+	return arguments(ctx, promote(optional), prefix, rawJSON, variants)
+}
+
+// promote makes attributes look required, so arguments renders them. It is only
+// ever given attributes settableArguments has already decided to show.
+func promote(attributes map[string]exampleAttribute) map[string]exampleAttribute {
+	out := make(map[string]exampleAttribute, len(attributes))
+
+	for name, attribute := range attributes {
+		attribute.forced = true
+		out[name] = attribute
+	}
+
+	return out
+}
+
 // arguments renders a line per argument that has to be set: every required one,
 // plus the first of any set of alternative blocks, since "exactly one of these" is
 // not satisfied by leaving all of them out.
@@ -467,7 +570,17 @@ func arguments(ctx context.Context, attributes map[string]exampleAttribute, pref
 // could mistake for a working one, which is the point.
 func value(ctx context.Context, attribute exampleAttribute, path string, rawJSON, variants []string) string {
 	if nested, ok := attribute.nested(); ok {
-		body := "{\n" + indent(arguments(ctx, nested, path, rawJSON, variants), "  ") + "}"
+		inner := arguments(ctx, nested, path, rawJSON, variants)
+
+		// A block with nothing required of it would come out empty, which says
+		// less than nothing: a cloud account's credentials are all optional and
+		// are the entire reason the block exists. Where there is nothing to be
+		// required, everything settable is shown instead.
+		if strings.TrimSpace(inner) == "" {
+			inner = settableArguments(ctx, nested, path, rawJSON, variants)
+		}
+
+		body := "{\n" + indent(inner, "  ") + "}"
 
 		if attribute.list() {
 			return "[" + body + "]"
@@ -494,22 +607,32 @@ func value(ctx context.Context, attribute exampleAttribute, path string, rawJSON
 		return "1"
 
 	case basetypes.ListType:
-		return "[" + scalar(singular(attribute.name), typed.ElemType) + "]"
+		return "[" + scalar(singular(attribute.name), typed.ElemType, reference(path)) + "]"
 
 	case basetypes.SetType:
-		return "[" + scalar(singular(attribute.name), typed.ElemType) + "]"
+		return "[" + scalar(singular(attribute.name), typed.ElemType, reference(path)) + "]"
 
 	case basetypes.MapType:
 		return "{}"
 
 	default:
-		return scalar(attribute.name, attribute.valueType())
+		return scalar(attribute.name, attribute.valueType(), reference(path))
 	}
+}
+
+// reference reports whether an attribute named like an id is likely to be one.
+//
+// An `id` on the object itself points at another object, and an example is worth
+// more for showing what one looks like. Inside a block it is as likely to be
+// something else — an AWS access key id is not an object in this API — so the
+// placeholder there says what to put rather than pretending to be a value.
+func reference(path string) bool {
+	return !strings.Contains(path, ".")
 }
 
 // scalar renders one value of an element type, named after the attribute holding
 // it.
-func scalar(name string, elem attr.Type) string {
+func scalar(name string, elem attr.Type, reference bool) string {
 	switch elem.(type) {
 	case basetypes.BoolType:
 		return "false"
@@ -518,7 +641,7 @@ func scalar(name string, elem attr.Type) string {
 	}
 
 	switch {
-	case name == idAttribute, strings.HasSuffix(name, "_id"):
+	case reference && (name == idAttribute || strings.HasSuffix(name, "_id")):
 		return fmt.Sprintf("%q", idExample)
 
 	case name == "name", name == "display_name", name == "group_name":
