@@ -2,6 +2,8 @@ package provider
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -130,8 +132,8 @@ func TestSingularDataSourcesCanBeFound(t *testing.T) {
 		schema := definition.Schema(ctx)
 
 		if definition.Search.Path == "" {
-			// A service tenant hangs off a tenant rather than sitting in a
-			// collection of its own, so there is nothing to filter.
+			// An object hanging off another rather than sitting in a collection of
+			// its own has nothing to filter, so it can only be addressed by id.
 			require.True(t, schema.Attributes["id"].IsRequired(), definition.Name)
 
 			continue
@@ -186,6 +188,37 @@ func TestEveryRawObjectIsNamedAndGated(t *testing.T) {
 		require.True(t, strings.HasSuffix(definition.Name, "_raw"),
 			"data source %s has to keep the plain name free for a typed replacement", definition.Name)
 	}
+}
+
+// TestProviderWarnsThatItIsAlpha covers the two places a practitioner can meet
+// this provider: the registry's home page, which tfplugindocs renders from the
+// provider schema, and the README. Both have to carry the same warning, so the
+// warning has one wording and the README quotes it.
+func TestProviderWarnsThatItIsAlpha(t *testing.T) {
+	ctx := context.Background()
+
+	resp := &provider.SchemaResponse{}
+	newProvider(t).Schema(ctx, provider.SchemaRequest{}, resp)
+
+	require.False(t, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
+
+	require.Contains(t, resp.Schema.Description, AlphaHeadline)
+	require.Contains(t, resp.Schema.Description, AlphaDetail)
+
+	// docs/index.md renders the markdown description, where the warning is a
+	// registry callout rather than another paragraph of prose.
+	require.Contains(t, resp.Schema.MarkdownDescription, "~> **"+AlphaHeadline+"**")
+	require.Contains(t, resp.Schema.MarkdownDescription, AlphaDetail)
+
+	readme, err := os.ReadFile(filepath.Join("..", "..", "README.md"))
+	require.NoError(t, err)
+
+	// The README wraps the warning across lines and quotes it as a callout, so it
+	// is the words that have to match rather than the layout.
+	prose := strings.Join(strings.Fields(strings.ReplaceAll(string(readme), ">", " ")), " ")
+
+	require.Contains(t, prose, AlphaHeadline)
+	require.Contains(t, prose, AlphaDetail)
 }
 
 func TestProviderSchemaOffersAnOptInPerRawFeature(t *testing.T) {

@@ -33,6 +33,28 @@ const (
 // resource a docs/ page belongs to.
 const TypeName = "netskopebwan"
 
+// providerSummary, AlphaHeadline and AlphaDetail are what the provider says
+// about itself. They travel through the provider schema into docs/index.md,
+// which is the page the Terraform registry shows first, so a practitioner reads
+// how finished this provider is before installing it rather than after.
+//
+// The README says the same thing for anyone who arrives at the repository
+// instead, and a test holds the two together.
+const (
+	providerSummary = "Manages Netskope Borderless WAN through its v2 API."
+
+	// AlphaHeadline is the warning itself, short enough to be read.
+	AlphaHeadline = "This provider is alpha software, and its schema is subject to change."
+
+	// AlphaDetail is why, which is also why the schema cannot be promised: the
+	// provider is generated from a specification that is still moving.
+	AlphaDetail = "Its resources, data sources and attributes are generated from the BWAN v2 " +
+		"OpenAPI specification, which is itself still changing, so any of them may be renamed, " +
+		"reshaped or removed in any release — including without a major version bump — and a " +
+		"configuration or state written against one version may need reworking for the next. " +
+		"Pin an exact version, and do not rely on it for production infrastructure yet."
+)
+
 // New returns the provider factory the plugin server is started with.
 func New(version string) func() provider.Provider {
 	return func() provider.Provider {
@@ -85,8 +107,9 @@ func (p *bwanProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp 
 	}
 
 	resp.Schema = schema.Schema{
-		Description: "Manages Netskope Borderless WAN through its v2 API.",
-		Attributes:  attributes,
+		Description:         providerSummary + " " + AlphaHeadline + " " + AlphaDetail,
+		MarkdownDescription: providerSummary + "\n\n~> **" + AlphaHeadline + "** " + AlphaDetail,
+		Attributes:          attributes,
 	}
 }
 

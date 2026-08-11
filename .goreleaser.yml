@@ -84,6 +84,12 @@ signs:
   #   artifacts: checksum
 
 release:
+  # A tag whose version carries a semver prerelease — v1.2.3-alpha.1,
+  # v1.2.3-beta1, v1.2.3-rc.2, the tags `make release` accepts alongside plain
+  # ones — is published as a GitHub prerelease. That keeps it off the
+  # repository's "Latest release" and out of what `terraform init` picks
+  # without an explicit constraint, which is what an alpha should be.
+  prerelease: auto
   extra_files:
     - glob: "terraform-registry-manifest.json"
       name_template: "{{ .ProjectName }}_{{ .Version }}_manifest.json"

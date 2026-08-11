@@ -3,11 +3,14 @@
 page_title: "netskopebwan Provider"
 description: |-
   Manages Netskope Borderless WAN through its v2 API.
+  ~> This provider is alpha software, and its schema is subject to change. Its resources, data sources and attributes are generated from the BWAN v2 OpenAPI specification, which is itself still changing, so any of them may be renamed, reshaped or removed in any release — including without a major version bump — and a configuration or state written against one version may need reworking for the next. Pin an exact version, and do not rely on it for production infrastructure yet.
 ---
 
 # netskopebwan Provider
 
 Manages Netskope Borderless WAN through its v2 API.
+
+~> **This provider is alpha software, and its schema is subject to change.** Its resources, data sources and attributes are generated from the BWAN v2 OpenAPI specification, which is itself still changing, so any of them may be renamed, reshaped or removed in any release — including without a major version bump — and a configuration or state written against one version may need reworking for the next. Pin an exact version, and do not rely on it for production infrastructure yet.
 
 ## Example Usage
 
