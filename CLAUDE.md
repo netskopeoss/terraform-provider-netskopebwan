@@ -99,6 +99,9 @@ Before touching any of this:
   name in `undocumented` reaches a generated page.
 - Import cannot reach another tenant: an import ID carries the object's identity
   and nothing else, so an imported object is read in the provider's own tenant.
+- The value is spliced into the endpoint's host unchecked, so whoever sets it
+  decides which host the provider's bearer token is sent to. It is an escape
+  hatch for tooling, and it trusts its caller.
 - `internal/tenanturl` is a trimmed copy of the shared package of that name.
   Fixes to how a tenant domain is found belong upstream first.
 

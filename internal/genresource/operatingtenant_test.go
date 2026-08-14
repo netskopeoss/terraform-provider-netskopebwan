@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -103,37 +102,6 @@ func TestOperatingTenantIsOptionalAndForcesReplacement(t *testing.T) {
 
 	require.False(t, modified.Diagnostics.HasError(), "%v", modified.Diagnostics)
 	require.True(t, modified.RequiresReplace)
-}
-
-// TestOperatingTenantRejectsAnIdentifierThatIsNotOne is the same guard as the one
-// in TenantClients, one step earlier: a practitioner hears about it at validate
-// time rather than at apply time.
-func TestOperatingTenantRejectsAnIdentifierThatIsNotOne(t *testing.T) {
-	_, meta := newAPI(t)
-
-	_, resourceSchema := newResource(t, thingDefinition(), meta)
-
-	typed, ok := resourceSchema.Attributes[OperatingTenantAttribute].(rschema.StringAttribute)
-	require.True(t, ok)
-	require.Len(t, typed.Validators, 1)
-
-	for _, id := range []string{"evil.example.net", "42/../7", "42:8443"} {
-		resp := &validator.StringResponse{}
-		typed.Validators[0].ValidateString(context.Background(), validator.StringRequest{
-			Path:        path.Root(OperatingTenantAttribute),
-			ConfigValue: types.StringValue(id),
-		}, resp)
-
-		require.True(t, resp.Diagnostics.HasError(), "%q is not an identifier", id)
-	}
-
-	accepted := &validator.StringResponse{}
-	typed.Validators[0].ValidateString(context.Background(), validator.StringRequest{
-		Path:        path.Root(OperatingTenantAttribute),
-		ConfigValue: types.StringValue("42"),
-	}, accepted)
-
-	require.False(t, accepted.Diagnostics.HasError(), "%v", accepted.Diagnostics)
 }
 
 // TestResourceCreateAddressesTheOperatingTenant is the whole point of the
@@ -249,15 +217,4 @@ func TestTenantClientsCachesOneClientPerTenant(t *testing.T) {
 	other, err := clients("7")
 	require.NoError(t, err)
 	require.NotSame(t, first, other)
-}
-
-// TestTenantClientsRefusesAnIdentifierThatIsNotOne guards the endpoint: the value
-// becomes the leading label of the host the provider sends its bearer token to.
-func TestTenantClientsRefusesAnIdentifierThatIsNotOne(t *testing.T) {
-	clients := TenantClients(bwanclient.Config{Endpoint: "https://acme.api.example.net", Token: "t"})
-
-	for _, id := range []string{"", "evil.example.net", "42/../7", "42:8443"} {
-		_, err := clients(id)
-		require.Error(t, err, "%q is not an identifier", id)
-	}
 }

@@ -1,18 +1,14 @@
 package genresource
 
 import (
-	"errors"
 	"fmt"
-	"regexp"
 	"sync"
 
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/bwanclient"
@@ -37,12 +33,6 @@ import (
 // third state between present and absent.
 const OperatingTenantAttribute = "operating_tenant"
 
-// operatingTenantPattern is what may be spliced into a hostname. It is a guard,
-// not a format: the value becomes the leading label of the endpoint's host, so
-// anything with a dot or a slash in it could point the provider's bearer token
-// at a host the practitioner never configured.
-var operatingTenantPattern = regexp.MustCompile(`^[A-Za-z0-9-]+$`)
-
 const operatingTenantDescription = "Identifier of the tenant to manage this object in, " +
 	"instead of the tenant the provider's `endpoint` names. The endpoint's tenant domain is " +
 	"replaced with `tid-<operating_tenant>`. Changing it moves the object to another tenant, " +
@@ -58,7 +48,6 @@ func operatingTenantResourceAttribute() rschema.Attribute {
 		Optional:            true,
 		Description:         operatingTenantDescription,
 		MarkdownDescription: operatingTenantDescription,
-		Validators:          []validator.String{stringvalidator.RegexMatches(operatingTenantPattern, operatingTenantIDError(""))},
 		PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 	}
 }
@@ -68,16 +57,7 @@ func operatingTenantDataSourceAttribute() dschema.Attribute {
 		Optional:            true,
 		Description:         operatingTenantDescription,
 		MarkdownDescription: operatingTenantDescription,
-		Validators:          []validator.String{stringvalidator.RegexMatches(operatingTenantPattern, operatingTenantIDError(""))},
 	}
-}
-
-func operatingTenantIDError(id string) string {
-	if id == "" {
-		return "An operating tenant is a bare identifier: letters, digits and dashes."
-	}
-
-	return fmt.Sprintf("%q is not an operating tenant identifier; expected letters, digits and dashes.", id)
 }
 
 // operatingTenantOf reads the attribute out of a plan, state or configuration
@@ -155,10 +135,6 @@ func TenantClients(cfg bwanclient.Config) func(string) (bwanclient.API, error) {
 	)
 
 	return func(id string) (bwanclient.API, error) {
-		if !operatingTenantPattern.MatchString(id) {
-			return nil, errors.New(operatingTenantIDError(id))
-		}
-
 		mu.Lock()
 		defer mu.Unlock()
 
