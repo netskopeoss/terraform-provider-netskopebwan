@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/genresource"
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/registry"
 )
 
 // attributeNames lists what a schema offers over the plugin protocol, which is
@@ -46,68 +47,53 @@ func providerSchema(t *testing.T) *tfprotov6.GetProviderSchemaResponse {
 	return schema
 }
 
-// TestOperatingTenantIsInvisibleByDefault is the property the whole feature turns
-// on. The attribute is undocumented not by leaving it out of the documentation —
-// which is generated, and would put it back — but by leaving it out of the
-// schema, which is what the documentation, the language server and the registry
-// are all built from.
-func TestOperatingTenantIsInvisibleByDefault(t *testing.T) {
+// TestOperatingTenantIsOnEveryObject is the half of the feature the provider
+// owns: the attribute has to be in the schema, because Terraform validates a
+// configuration against the schema and an argument that is not in it cannot be
+// written. Keeping it out of the documentation is tools/tfdocs' job.
+func TestOperatingTenantIsOnEveryObject(t *testing.T) {
 	schema := providerSchema(t)
 
 	require.NotEmpty(t, schema.ResourceSchemas)
 	require.NotEmpty(t, schema.DataSourceSchemas)
 
 	for name, resourceSchema := range schema.ResourceSchemas {
-		require.NotContains(t, attributeNames(resourceSchema), genresource.OperatingTenantAttribute, name)
+		require.Contains(t, attributeNames(resourceSchema), genresource.OperatingTenantAttribute, name)
 	}
 
 	for name, dataSourceSchema := range schema.DataSourceSchemas {
-		require.NotContains(t, attributeNames(dataSourceSchema), genresource.OperatingTenantAttribute, name)
+		require.Contains(t, attributeNames(dataSourceSchema), genresource.OperatingTenantAttribute, name)
 	}
 
 	require.NotContains(t, attributeNames(schema.Provider), genresource.OperatingTenantAttribute,
-		"the escape hatch is not a provider argument either")
+		"the tenant is chosen per object, not once for the provider")
 }
 
-// TestOperatingTenantAppearsOnEveryObjectWhenEnabled also counts the attributes,
-// because the escape hatch is written into a generated schema: an object that
-// already had an attribute of that name would have it silently replaced rather
-// than gaining one, and the count is what notices.
-func TestOperatingTenantAppearsOnEveryObjectWhenEnabled(t *testing.T) {
-	before := providerSchema(t)
+// TestOperatingTenantDoesNotDisplaceAnAttribute guards the way it is added: it is
+// written into a generated schema, so an object that already had an attribute of
+// that name would have it silently replaced rather than gaining one. Nothing in
+// the spec is called this today, and this is what notices if that changes.
+func TestOperatingTenantDoesNotDisplaceAnAttribute(t *testing.T) {
+	ctx := context.Background()
 
-	t.Setenv(genresource.OperatingTenantEnv, "1")
-
-	after := providerSchema(t)
-
-	for name, resourceSchema := range after.ResourceSchemas {
-		require.Contains(t, attributeNames(resourceSchema), genresource.OperatingTenantAttribute, name)
-		require.Len(t, attributeNames(resourceSchema), len(attributeNames(before.ResourceSchemas[name]))+1, name)
+	for _, definition := range registry.Resources() {
+		require.NotContains(t, definition.Schema(ctx).Attributes, genresource.OperatingTenantAttribute, definition.Name)
 	}
 
-	for name, dataSourceSchema := range after.DataSourceSchemas {
-		require.Contains(t, attributeNames(dataSourceSchema), genresource.OperatingTenantAttribute, name)
-		require.Len(t, attributeNames(dataSourceSchema), len(attributeNames(before.DataSourceSchemas[name]))+1, name)
+	for _, definition := range registry.DataSources() {
+		require.NotContains(t, definition.Schema(ctx).Attributes, genresource.OperatingTenantAttribute, definition.Name)
 	}
 }
 
-// TestOperatingTenantClientsAreOnlyBuiltWhenEnabled covers the other half of the
-// gate: with it off the provider has no way to reach another tenant at all, so
-// state carried over from a run that had it on cannot be applied by accident.
-func TestOperatingTenantClientsAreOnlyBuiltWhenEnabled(t *testing.T) {
-	off := configure(t, "1.0.0", "")
-	require.False(t, off.Diagnostics.HasError(), "%v", off.Diagnostics)
+// TestOperatingTenantClientsAreConfigured covers the wiring: every configured
+// provider can reach another tenant, because the attribute is always there to
+// ask it to.
+func TestOperatingTenantClientsAreConfigured(t *testing.T) {
+	configured := configure(t, "1.0.0", "")
+	require.False(t, configured.Diagnostics.HasError(), "%v", configured.Diagnostics)
 
-	meta, ok := off.ResourceData.(*genresource.Meta)
-	require.True(t, ok)
-	require.Nil(t, meta.Tenant)
-
-	t.Setenv(genresource.OperatingTenantEnv, "1")
-
-	on := configure(t, "1.0.0", "")
-	require.False(t, on.Diagnostics.HasError(), "%v", on.Diagnostics)
-
-	meta, ok = on.ResourceData.(*genresource.Meta)
+	meta, ok := configured.ResourceData.(*genresource.Meta)
 	require.True(t, ok)
 	require.NotNil(t, meta.Tenant)
+	require.Equal(t, meta, configured.DataSourceData)
 }

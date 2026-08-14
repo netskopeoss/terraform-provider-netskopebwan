@@ -3,7 +3,6 @@ package genresource
 import (
 	"errors"
 	"fmt"
-	"os"
 	"regexp"
 	"sync"
 
@@ -21,26 +20,22 @@ import (
 )
 
 // OperatingTenantAttribute names the escape hatch every resource and data source
-// gains when it is switched on: the tenant that one object is managed in,
-// whatever tenant the provider itself is configured for.
+// carries: the tenant that one object is managed in, whatever tenant the
+// provider itself is configured for.
+//
+// It is undocumented, and it is undocumented by omission from the pages rather
+// than by omission from the schema. Terraform core validates a configuration
+// against the schema the provider serves, so an attribute that is not in the
+// schema is not an argument that can be written at all — being usable and being
+// in the schema are the same thing. tools/tfdocs is what generates docs/ and
+// examples/, and it leaves this attribute out of both; see `documented` there.
+//
+// What that does not hide it from is an editor. The language server reads the
+// same schema Terraform does, so it completes and validates operating_tenant
+// like any other argument. Nothing in the plugin protocol marks an attribute as
+// internal — SchemaAttribute has Sensitive, Deprecated and WriteOnly, and no
+// third state between present and absent.
 const OperatingTenantAttribute = "operating_tenant"
-
-// OperatingTenantEnv gates that attribute, and gates it in the schema rather
-// than at apply time.
-//
-// The gate is an environment variable and not a provider argument because the
-// point of it is to be invisible. Everything that describes the provider —
-// tfplugindocs, the language server's completion and validation, the registry —
-// reads the schema the provider serves over GetProviderSchema, so an attribute
-// that is not in the schema is in none of them. That also means the variable has
-// to be set wherever Terraform runs, not just where the configuration is
-// written: with it unset, a configuration that names operating_tenant fails in
-// Terraform core as an unexpected argument, which is what an opt-in should do.
-//
-// State survives the gate being switched off: the framework unmarshals prior
-// state with IgnoreUndefinedAttributes, so an attribute the schema no longer has
-// is dropped rather than raising an error.
-const OperatingTenantEnv = "BWAN_ENABLE_OPERATING_TENANT"
 
 // operatingTenantPattern is what may be spliced into a hostname. It is a guard,
 // not a format: the value becomes the leading label of the endpoint's host, so
@@ -52,18 +47,8 @@ const operatingTenantDescription = "Identifier of the tenant to manage this obje
 	"instead of the tenant the provider's `endpoint` names. The endpoint's tenant domain is " +
 	"replaced with `tid-<operating_tenant>`. Changing it moves the object to another tenant, " +
 	"which means replacing it. Undocumented and unsupported: it exists for tooling that " +
-	"administers many tenants through one provider configuration, and it is only in the schema " +
-	"at all when $" + OperatingTenantEnv + " is set."
-
-// operatingTenantEnabled reports whether the escape hatch is switched on.
-func operatingTenantEnabled() bool {
-	switch os.Getenv(OperatingTenantEnv) {
-	case "", "0", "false":
-		return false
-	default:
-		return true
-	}
-}
+	"administers many tenants through one provider configuration, and it appears in no " +
+	"published documentation."
 
 // operatingTenantResourceAttribute is the attribute as a resource carries it.
 // Pointing an existing object at another tenant is not an update the API can
@@ -96,9 +81,8 @@ func operatingTenantIDError(id string) string {
 }
 
 // operatingTenantOf reads the attribute out of a plan, state or configuration
-// value. Everything about it is optional — the gate may be off, so the schema
-// may not have the attribute at all — and an absent one means the provider's own
-// tenant.
+// value. An absent one means the provider's own tenant, which is what almost
+// every object says.
 func operatingTenantOf(value tftypes.Value) (string, error) {
 	if value.IsNull() || !value.IsKnown() {
 		return "", nil
@@ -140,8 +124,8 @@ func (m *Meta) clientFor(value tftypes.Value) (bwanclient.API, diag.Diagnostics)
 
 	if m.Tenant == nil {
 		diags.AddError(
-			"Operating tenant not enabled",
-			fmt.Sprintf("This object sets %s, which needs $%s set wherever Terraform runs.", OperatingTenantAttribute, OperatingTenantEnv),
+			"Provider not configured",
+			fmt.Sprintf("This object sets %s, but the provider has no way to reach another tenant. This is a bug in the provider.", OperatingTenantAttribute),
 		)
 
 		return nil, diags
@@ -161,18 +145,10 @@ func (m *Meta) clientFor(value tftypes.Value) (bwanclient.API, diag.Diagnostics)
 // operating tenant, each the provider's own configuration with the endpoint's
 // tenant domain replaced.
 //
-// It is nil where the escape hatch is switched off, so that a provider without
-// it cannot be made to talk to a tenant other than its own — by state left over
-// from a run that had it on, or by anything else.
-//
 // The clients are cached because every operation resolves its own, and a client
 // is a connection pool: building one per resource per apply would leave a large
 // configuration opening a connection it uses once.
 func TenantClients(cfg bwanclient.Config) func(string) (bwanclient.API, error) {
-	if !operatingTenantEnabled() {
-		return nil
-	}
-
 	var (
 		mu     sync.Mutex
 		cached = map[string]bwanclient.API{}

@@ -21,15 +21,6 @@ import (
 	mock_bwanclient "github.com/netskopeoss/terraform-provider-netskopebwan/internal/bwanclient/mock"
 )
 
-// enableOperatingTenant switches the escape hatch on for one test. Schemas are
-// built per operation, so setting it here is enough for the resources the test
-// goes on to build.
-func enableOperatingTenant(t *testing.T) {
-	t.Helper()
-
-	t.Setenv(OperatingTenantEnv, "1")
-}
-
 // newTenantAPI returns the provider's own client, the client standing for tenant
 // "42", and the Meta wiring the two together. Both are strict mocks, so a
 // request sent to the wrong tenant fails the test by arriving somewhere nothing
@@ -55,28 +46,29 @@ func newTenantAPI(t *testing.T) (own, tenant *mock_bwanclient.MockAPI, meta *Met
 	return own, tenant, meta
 }
 
-func TestOperatingTenantIsNotInTheSchemaUnlessItIsEnabled(t *testing.T) {
+// TestOperatingTenantIsOnEveryKindOfObject covers the two decorations an object
+// can go through, including the data source that has no search endpoint and so
+// takes the early way out of decorateDataSource.
+func TestOperatingTenantIsOnEveryKindOfObject(t *testing.T) {
 	_, meta := newAPI(t)
 
 	_, resourceSchema := newResource(t, thingDefinition(), meta)
-	require.NotContains(t, resourceSchema.Attributes, OperatingTenantAttribute)
+	require.Contains(t, resourceSchema.Attributes, OperatingTenantAttribute)
 
 	_, dataSourceSchema := newDataSource(t, singularDefinition(), meta)
-	require.NotContains(t, dataSourceSchema.Attributes, OperatingTenantAttribute)
+	require.Contains(t, dataSourceSchema.Attributes, OperatingTenantAttribute)
 
 	_, listSchema := newDataSource(t, thingsDefinition(), meta)
-	require.NotContains(t, listSchema.Attributes, OperatingTenantAttribute)
+	require.Contains(t, listSchema.Attributes, OperatingTenantAttribute)
 }
 
 func TestOperatingTenantIsOptionalAndForcesReplacement(t *testing.T) {
-	enableOperatingTenant(t)
-
 	_, meta := newAPI(t)
 
 	_, resourceSchema := newResource(t, thingDefinition(), meta)
 
 	attribute, ok := resourceSchema.Attributes[OperatingTenantAttribute]
-	require.True(t, ok, "the escape hatch is in the schema once it is enabled")
+	require.True(t, ok)
 	require.True(t, attribute.IsOptional())
 	require.False(t, attribute.IsRequired())
 	require.False(t, attribute.IsComputed())
@@ -117,8 +109,6 @@ func TestOperatingTenantIsOptionalAndForcesReplacement(t *testing.T) {
 // in TenantClients, one step earlier: a practitioner hears about it at validate
 // time rather than at apply time.
 func TestOperatingTenantRejectsAnIdentifierThatIsNotOne(t *testing.T) {
-	enableOperatingTenant(t)
-
 	_, meta := newAPI(t)
 
 	_, resourceSchema := newResource(t, thingDefinition(), meta)
@@ -150,8 +140,6 @@ func TestOperatingTenantRejectsAnIdentifierThatIsNotOne(t *testing.T) {
 // attribute: the request goes to the tenant the object names, and the name
 // itself is not part of the object.
 func TestResourceCreateAddressesTheOperatingTenant(t *testing.T) {
-	enableOperatingTenant(t)
-
 	_, tenant, meta := newTenantAPI(t)
 
 	tenant.EXPECT().
@@ -179,8 +167,6 @@ func TestResourceCreateAddressesTheOperatingTenant(t *testing.T) {
 // findable there, so a read that fell back to the provider's own tenant would
 // report it as deleted and a delete would leave it behind.
 func TestResourceRefreshAndDeleteAddressTheOperatingTenant(t *testing.T) {
-	enableOperatingTenant(t)
-
 	_, tenant, meta := newTenantAPI(t)
 
 	tenant.EXPECT().
@@ -209,8 +195,6 @@ func TestResourceRefreshAndDeleteAddressTheOperatingTenant(t *testing.T) {
 }
 
 func TestDataSourceAddressesTheOperatingTenant(t *testing.T) {
-	enableOperatingTenant(t)
-
 	_, tenant, meta := newTenantAPI(t)
 
 	// The tenant is how the request is addressed, so it is not also a filter.
@@ -231,12 +215,10 @@ func TestDataSourceAddressesTheOperatingTenant(t *testing.T) {
 	require.Equal(t, "42", attributeString(t, resp.State.Raw, OperatingTenantAttribute))
 }
 
-// TestOperatingTenantWithoutAFactoryIsRefused is the case where a configuration
-// names a tenant but the process running Terraform does not have the escape
-// hatch switched on. Nothing may be sent to the provider's own tenant instead.
+// TestOperatingTenantWithoutAFactoryIsRefused pins the failure mode of a Meta
+// built without one: nothing may be sent to the provider's own tenant instead,
+// because that is the wrong tenant and the object would be created in it.
 func TestOperatingTenantWithoutAFactoryIsRefused(t *testing.T) {
-	enableOperatingTenant(t)
-
 	_, meta := newAPI(t)
 	meta.Tenant = nil
 
@@ -251,18 +233,11 @@ func TestOperatingTenantWithoutAFactoryIsRefused(t *testing.T) {
 	resp := createResource(t, res, schema, plan)
 
 	require.True(t, resp.Diagnostics.HasError())
-	require.Contains(t, resp.Diagnostics.Errors()[0].Detail(), OperatingTenantEnv)
-}
-
-func TestTenantClientsIsNilUnlessTheHatchIsEnabled(t *testing.T) {
-	require.Nil(t, TenantClients(bwanclient.Config{Endpoint: "https://acme.api.example.net", Token: "t"}))
+	require.Contains(t, resp.Diagnostics.Errors()[0].Detail(), OperatingTenantAttribute)
 }
 
 func TestTenantClientsCachesOneClientPerTenant(t *testing.T) {
-	enableOperatingTenant(t)
-
 	clients := TenantClients(bwanclient.Config{Endpoint: "https://acme.api.example.net", Token: "t"})
-	require.NotNil(t, clients)
 
 	first, err := clients("42")
 	require.NoError(t, err)
@@ -279,8 +254,6 @@ func TestTenantClientsCachesOneClientPerTenant(t *testing.T) {
 // TestTenantClientsRefusesAnIdentifierThatIsNotOne guards the endpoint: the value
 // becomes the leading label of the host the provider sends its bearer token to.
 func TestTenantClientsRefusesAnIdentifierThatIsNotOne(t *testing.T) {
-	enableOperatingTenant(t)
-
 	clients := TenantClients(bwanclient.Config{Endpoint: "https://acme.api.example.net", Token: "t"})
 
 	for _, id := range []string{"", "evil.example.net", "42/../7", "42:8443"} {

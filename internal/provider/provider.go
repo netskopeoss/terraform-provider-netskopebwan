@@ -229,10 +229,7 @@ func (p *bwanProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		Client:     client,
 		TypeName:   TypeName,
 		RawEnabled: rawEnabled,
-		// Left nil where the escape hatch is off, so that state carried over from
-		// a run that had it on is refused rather than quietly applied against the
-		// wrong tenant.
-		Tenant: genresource.TenantClients(config),
+		Tenant:     genresource.TenantClients(config),
 	}
 
 	resp.ResourceData = meta

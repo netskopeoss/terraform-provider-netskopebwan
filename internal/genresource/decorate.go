@@ -47,9 +47,7 @@ func decorate(ctx context.Context, def Definition) rschema.Schema {
 
 	attributes[idAttribute] = idAttributeSchema(attributes[idAttribute])
 
-	if operatingTenantEnabled() {
-		attributes[OperatingTenantAttribute] = operatingTenantResourceAttribute()
-	}
+	attributes[OperatingTenantAttribute] = operatingTenantResourceAttribute()
 
 	for _, path := range def.RawJSONAttributes {
 		// Only a top-level attribute is given the JSON custom type: a nested one
@@ -116,9 +114,7 @@ func decorateDataSource(ctx context.Context, def DataSourceDefinition) dschema.S
 		attributes = map[string]dschema.Attribute{}
 	}
 
-	if operatingTenantEnabled() {
-		attributes[OperatingTenantAttribute] = operatingTenantDataSourceAttribute()
-	}
+	attributes[OperatingTenantAttribute] = operatingTenantDataSourceAttribute()
 
 	if !def.Search.Supported() {
 		schema.Attributes = attributes
