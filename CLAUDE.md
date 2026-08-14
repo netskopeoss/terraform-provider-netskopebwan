@@ -76,10 +76,11 @@ Two things the runtime cannot derive, and which have rules:
 
 ## The one attribute that is not in the documentation
 
-Every resource and data source carries `operating_tenant`: the tenant to manage
-that one object in, reached by replacing the tenant domain of the provider's
-`endpoint` with `tid-<id>`. It is for tooling administering many tenants through
-one provider configuration, and it appears in no published documentation.
+Every resource and data source carries `operating_tenant_id`: the tenant to
+manage that one object in, reached by replacing the tenant domain of the
+provider's `endpoint` with `tid-<id>`. It is for tooling administering many
+tenants through one provider configuration, and it appears in no published
+documentation.
 
 It is in the schema, because Terraform validates a configuration against the
 schema and an argument that is not in it cannot be written at all. It is kept
@@ -92,7 +93,7 @@ Before touching any of this:
 
 - It is undocumented, not secret. The language server asks the provider for the
   same schema Terraform does, so an editor completes and validates
-  `operating_tenant` like any other argument. Nothing in the plugin protocol
+  `operating_tenant_id` like any other argument. Nothing in the plugin protocol
   marks an attribute internal — `SchemaAttribute` has `Sensitive`, `Deprecated`
   and `WriteOnly`, and nothing between present and absent.
 - Do not "fix" the missing documentation. A test in `tools/tfdocs` fails if a

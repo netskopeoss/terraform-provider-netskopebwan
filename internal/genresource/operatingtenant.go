@@ -27,15 +27,15 @@ import (
 // examples/, and it leaves this attribute out of both; see `documented` there.
 //
 // What that does not hide it from is an editor. The language server reads the
-// same schema Terraform does, so it completes and validates operating_tenant
+// same schema Terraform does, so it completes and validates operating_tenant_id
 // like any other argument. Nothing in the plugin protocol marks an attribute as
 // internal — SchemaAttribute has Sensitive, Deprecated and WriteOnly, and no
 // third state between present and absent.
-const OperatingTenantAttribute = "operating_tenant"
+const OperatingTenantAttribute = "operating_tenant_id"
 
 const operatingTenantDescription = "Identifier of the tenant to manage this object in, " +
 	"instead of the tenant the provider's `endpoint` names. The endpoint's tenant domain is " +
-	"replaced with `tid-<operating_tenant>`. Changing it moves the object to another tenant, " +
+	"replaced with `tid-<operating_tenant_id>`. Changing it moves the object to another tenant, " +
 	"which means replacing it. Undocumented and unsupported: it exists for tooling that " +
 	"administers many tenants through one provider configuration, and it appears in no " +
 	"published documentation."
