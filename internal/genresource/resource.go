@@ -275,7 +275,14 @@ func (r *genericResource) Delete(ctx context.Context, req resource.DeleteRequest
 		return
 	}
 
-	_, err = r.meta.Client.Do(ctx, bwanclient.Request{Method: r.def.Delete.Method, Path: requestPath})
+	client, diags := r.meta.clientFor(req.State.Raw)
+	resp.Diagnostics.Append(diags...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	_, err = client.Do(ctx, bwanclient.Request{Method: r.def.Delete.Method, Path: requestPath})
 	if err != nil && !errors.Is(err, bwanclient.ErrNotFound) {
 		resp.Diagnostics.AddError("Could not delete "+r.def.Name, err.Error())
 	}
@@ -354,14 +361,21 @@ func (r *genericResource) write(ctx context.Context, op Operation, value tftypes
 		return nil, false, diags
 	}
 
-	body, err := r.model.Body(value, skipSet(placeholders(op.Path)))
+	body, err := r.model.Body(value, skipSet(append(placeholders(op.Path), OperatingTenantAttribute)))
 	if err != nil {
 		diags.AddError("Invalid configuration", fmt.Sprintf("Cannot build the request body for %s: %s.", r.def.Name, err))
 
 		return nil, false, diags
 	}
 
-	document, found, err := fetch(ctx, r.meta.Client, bwanclient.Request{Method: op.Method, Path: requestPath, Body: body})
+	client, clientDiags := r.meta.clientFor(value)
+	diags.Append(clientDiags...)
+
+	if diags.HasError() {
+		return nil, false, diags
+	}
+
+	document, found, err := fetch(ctx, client, bwanclient.Request{Method: op.Method, Path: requestPath, Body: body})
 	if err != nil {
 		diags.AddError("Could not write "+r.def.Name, err.Error())
 
@@ -383,8 +397,15 @@ func (r *genericResource) read(ctx context.Context, value tftypes.Value) (any, b
 		return nil, false, diags
 	}
 
+	client, clientDiags := r.meta.clientFor(value)
+	diags.Append(clientDiags...)
+
+	if diags.HasError() {
+		return nil, false, diags
+	}
+
 	if slices.Contains(placeholders(r.def.Read.Path), idAttribute) {
-		document, found, err := fetch(ctx, r.meta.Client, bwanclient.Request{Method: r.def.Read.Method, Path: requestPath})
+		document, found, err := fetch(ctx, client, bwanclient.Request{Method: r.def.Read.Method, Path: requestPath})
 
 		if errors.Is(err, bwanclient.ErrNotFound) {
 			return nil, false, diags
@@ -412,7 +433,7 @@ func (r *genericResource) read(ctx context.Context, value tftypes.Value) (any, b
 		return nil, false, diags
 	}
 
-	element, found, err := findByID(ctx, r.meta.Client, requestPath, identity[idAttribute], r.def.Variant)
+	element, found, err := findByID(ctx, client, requestPath, identity[idAttribute], r.def.Variant)
 	if err != nil {
 		diags.AddError("Could not read "+r.def.Name, err.Error())
 

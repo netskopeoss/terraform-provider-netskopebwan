@@ -147,15 +147,22 @@ func (d *genericDataSource) document(ctx context.Context, config tftypes.Value) 
 
 	// Every configurable attribute that is not part of the path is a filter the
 	// API takes as a query parameter.
-	query, err := d.model.Query(config, skipSet(placeholders(d.def.Read.Path)))
+	query, err := d.model.Query(config, skipSet(append(placeholders(d.def.Read.Path), OperatingTenantAttribute)))
 	if err != nil {
 		diags.AddError("Invalid configuration", fmt.Sprintf("Cannot build the query for %s: %s.", d.def.Name, err))
 
 		return nil, diags
 	}
 
+	client, clientDiags := d.meta.clientFor(config)
+	diags.Append(clientDiags...)
+
+	if diags.HasError() {
+		return nil, diags
+	}
+
 	if d.searchable(config) {
-		return d.search(ctx, config, url.Values(query))
+		return d.search(ctx, client, config, url.Values(query))
 	}
 
 	requestPath, err := resolvePath(d.def.Read.Path, config)
@@ -165,7 +172,7 @@ func (d *genericDataSource) document(ctx context.Context, config tftypes.Value) 
 		return nil, diags
 	}
 
-	return d.fetch(ctx, requestPath, url.Values(query))
+	return d.fetch(ctx, client, requestPath, url.Values(query))
 }
 
 // searchable reports whether this read is a lookup by filter rather than by id.
@@ -183,7 +190,7 @@ func (d *genericDataSource) searchable(config tftypes.Value) bool {
 // search finds the one object matching a filter. Anything other than one match is
 // an error: a data source stands for a single object, and quietly picking the
 // first of several would make the configuration depend on the API's ordering.
-func (d *genericDataSource) search(ctx context.Context, config tftypes.Value, query url.Values) (any, diag.Diagnostics) {
+func (d *genericDataSource) search(ctx context.Context, client bwanclient.API, config tftypes.Value, query url.Values) (any, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	searchPath, err := resolvePath(d.def.Search.Path, config)
@@ -193,7 +200,7 @@ func (d *genericDataSource) search(ctx context.Context, config tftypes.Value, qu
 		return nil, diags
 	}
 
-	all, err := fetchAll(ctx, d.meta.Client, searchPath, query)
+	all, err := fetchAll(ctx, client, searchPath, query)
 	if err != nil {
 		diags.AddError("Could not search "+d.def.Name, err.Error())
 
@@ -221,14 +228,14 @@ func (d *genericDataSource) search(ctx context.Context, config tftypes.Value, qu
 	return nil, diags
 }
 
-func (d *genericDataSource) fetch(ctx context.Context, requestPath string, query url.Values) (any, diag.Diagnostics) {
+func (d *genericDataSource) fetch(ctx context.Context, client bwanclient.API, requestPath string, query url.Values) (any, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	// A caller that asked for a specific page gets exactly that page; otherwise
 	// every page is walked so `data` holds the whole collection rather than
 	// whatever the server's default page size happens to be.
 	if d.collection && !query.Has(firstParam) && !query.Has(afterParam) {
-		all, err := fetchAll(ctx, d.meta.Client, requestPath, query)
+		all, err := fetchAll(ctx, client, requestPath, query)
 		if err != nil {
 			diags.AddError("Could not read "+d.def.Name, err.Error())
 
@@ -240,7 +247,7 @@ func (d *genericDataSource) fetch(ctx context.Context, requestPath string, query
 		return all.Document(), diags
 	}
 
-	document, found, err := fetch(ctx, d.meta.Client, bwanclient.Request{Method: d.def.Read.Method, Path: requestPath, Query: query})
+	document, found, err := fetch(ctx, client, bwanclient.Request{Method: d.def.Read.Method, Path: requestPath, Query: query})
 	if err != nil {
 		if errors.Is(err, bwanclient.ErrNotFound) {
 			diags.AddError(

@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
+	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/genresource"
 	"github.com/netskopeoss/terraform-provider-netskopebwan/internal/provider"
 )
 
@@ -39,6 +40,14 @@ func main() {
 func run(args []string) error {
 	if len(args) == 0 {
 		return errors.New("expected a subcommand: schema, examples or html")
+	}
+
+	// The provider is started in this process, so it would read this from the
+	// environment of whoever ran make. Documentation has to be the same wherever
+	// it is generated — docs-check compares it against what is committed — and
+	// the escape hatch it hides is undocumented by design.
+	if err := os.Unsetenv(genresource.OperatingTenantEnv); err != nil {
+		return fmt.Errorf("clearing $%s: %w", genresource.OperatingTenantEnv, err)
 	}
 
 	switch args[0] {

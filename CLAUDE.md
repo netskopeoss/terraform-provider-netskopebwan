@@ -74,6 +74,30 @@ Two things the runtime cannot derive, and which have rules:
   fails the build if a raw object is ungated or unsuffixed, so the plain name
   stays free for a typed replacement.
 
+## The one attribute that is not in the documentation
+
+Every resource and data source gains `operating_tenant` when
+`$BWAN_ENABLE_OPERATING_TENANT` is set: the tenant to manage that one object in,
+reached by replacing the tenant domain of the provider's `endpoint` with
+`tid-<id>`. It is for tooling administering many tenants through one provider
+configuration, and it is deliberately absent from the docs, the registry and the
+language server.
+
+It is hidden by being left out of the schema rather than out of `docs/`, because
+`docs/` is generated from the schema and would put it back. The consequences are
+worth knowing before touching it:
+
+- The variable has to be set wherever Terraform runs, not just where the
+  configuration is written. Unset, a configuration naming the attribute fails in
+  core as an unexpected argument.
+- `tools/tfdocs` unsets the variable before it starts the provider, so that
+  whoever runs `make docs` cannot commit a different set of pages than CI
+  generates. Do not remove that, and do not add a way to document the attribute.
+- Import cannot reach another tenant: an import ID carries the object's identity
+  and nothing else, so an imported object is read in the provider's own tenant.
+- `internal/tenanturl` is a trimmed copy of the shared package of that name.
+  Fixes to how a tenant domain is found belong upstream first.
+
 ## Checks
 
 `make ci` is exactly what CI runs, in order: `generate`, `fmt-check`,
