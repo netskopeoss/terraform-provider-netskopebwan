@@ -222,6 +222,10 @@ func resourceSchema(ctx context.Context, definition genresource.Definition) (map
 	out := map[string]exampleAttribute{}
 
 	for name, attribute := range resp.Schema.Attributes {
+		if !documented(name) {
+			continue
+		}
+
 		out[name] = exampleAttribute{name: name, attribute: attribute}
 	}
 
@@ -239,6 +243,10 @@ func dataSourceSchema(ctx context.Context, definition genresource.DataSourceDefi
 	out := map[string]exampleAttribute{}
 
 	for name, attribute := range resp.Schema.Attributes {
+		if !documented(name) {
+			continue
+		}
+
 		out[name] = exampleAttribute{name: name, attribute: attribute}
 	}
 

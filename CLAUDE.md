@@ -74,6 +74,38 @@ Two things the runtime cannot derive, and which have rules:
   fails the build if a raw object is ungated or unsuffixed, so the plain name
   stays free for a typed replacement.
 
+## The one attribute that is not in the documentation
+
+Every resource and data source carries `operating_tenant_id`: the tenant to
+manage that one object in, reached by replacing the tenant domain of the
+provider's `endpoint` with `tid-<id>`. It is for tooling administering many
+tenants through one provider configuration, and it appears in no published
+documentation.
+
+It is in the schema, because Terraform validates a configuration against the
+schema and an argument that is not in it cannot be written at all. It is kept
+out of the pages instead, by `undocumented` in [`tools/tfdocs`](tools/tfdocs) —
+which is what generates both the schema tfplugindocs renders and the examples
+those pages embed, so leaving an attribute out there leaves it out of `docs/`,
+out of `examples/` and out of the registry.
+
+Before touching any of this:
+
+- It is undocumented, not secret. The language server asks the provider for the
+  same schema Terraform does, so an editor completes and validates
+  `operating_tenant_id` like any other argument. Nothing in the plugin protocol
+  marks an attribute internal — `SchemaAttribute` has `Sensitive`, `Deprecated`
+  and `WriteOnly`, and nothing between present and absent.
+- Do not "fix" the missing documentation. A test in `tools/tfdocs` fails if a
+  name in `undocumented` reaches a generated page.
+- Import cannot reach another tenant: an import ID carries the object's identity
+  and nothing else, so an imported object is read in the provider's own tenant.
+- The value is spliced into the endpoint's host unchecked, so whoever sets it
+  decides which host the provider's bearer token is sent to. It is an escape
+  hatch for tooling, and it trusts its caller.
+- `internal/tenanturl` is a trimmed copy of the shared package of that name.
+  Fixes to how a tenant domain is found belong upstream first.
+
 ## Checks
 
 `make ci` is exactly what CI runs, in order: `generate`, `fmt-check`,

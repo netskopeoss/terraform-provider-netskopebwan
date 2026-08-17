@@ -19,6 +19,10 @@ type Meta struct {
 	// RawEnabled records which opaque-configuration features the practitioner
 	// opted in to.
 	RawEnabled map[string]bool
+	// Tenant returns a client addressing another operating tenant, which is what
+	// the operating_tenant_id attribute of a resource or data source selects. See
+	// OperatingTenantAttribute.
+	Tenant func(id string) (bwanclient.API, error)
 }
 
 // RawOptInArgument names the provider argument guarding a feature.

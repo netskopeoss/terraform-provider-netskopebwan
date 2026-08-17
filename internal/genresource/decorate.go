@@ -47,6 +47,8 @@ func decorate(ctx context.Context, def Definition) rschema.Schema {
 
 	attributes[idAttribute] = idAttributeSchema(attributes[idAttribute])
 
+	attributes[OperatingTenantAttribute] = operatingTenantResourceAttribute()
+
 	for _, path := range def.RawJSONAttributes {
 		// Only a top-level attribute is given the JSON custom type: a nested one
 		// would no longer match the attribute types its generated parent object
@@ -107,13 +109,17 @@ func descriptionOf(attribute rschema.Attribute) string {
 func decorateDataSource(ctx context.Context, def DataSourceDefinition) dschema.Schema {
 	schema := def.Schema(ctx)
 
-	if !def.Search.Supported() {
-		return schema
-	}
-
 	attributes := maps.Clone(schema.Attributes)
 	if attributes == nil {
 		attributes = map[string]dschema.Attribute{}
+	}
+
+	attributes[OperatingTenantAttribute] = operatingTenantDataSourceAttribute()
+
+	if !def.Search.Supported() {
+		schema.Attributes = attributes
+
+		return schema
 	}
 
 	const idDescription = "Identifier of the object to read. Exactly one of `id` or `filter` is required."

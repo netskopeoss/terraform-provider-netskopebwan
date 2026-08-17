@@ -210,13 +210,15 @@ func (p *bwanProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		return
 	}
 
-	client, err := bwanclient.New(bwanclient.Config{
+	config := bwanclient.Config{
 		Endpoint:           endpoint,
 		Token:              token,
 		Timeout:            timeout,
 		InsecureSkipVerify: insecure.ValueBool(),
 		UserAgent:          "terraform-provider-netskopebwan/" + p.version,
-	})
+	}
+
+	client, err := bwanclient.New(config)
 	if err != nil {
 		resp.Diagnostics.AddError("Could not configure the BWAN client", err.Error())
 
@@ -227,6 +229,7 @@ func (p *bwanProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		Client:     client,
 		TypeName:   TypeName,
 		RawEnabled: rawEnabled,
+		Tenant:     genresource.TenantClients(config),
 	}
 
 	resp.ResourceData = meta
