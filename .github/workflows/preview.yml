@@ -1,0 +1,102 @@
+name: Preview
+
+# Build every pull request's HTML docs (`make docs-html`, see README.md) and
+# publish them to Cloudflare Pages as a per-branch preview deployment, then
+# drop the preview URL in a sticky PR comment. The build runs inside
+# `devenv shell`, the same toolchain ci.yml uses, so the preview is
+# byte-identical to what a contributor gets locally; only the publish target
+# differs (Cloudflare Pages instead of nothing, since docs_html is otherwise
+# gitignored and never leaves the machine that built it).
+#
+# Secrets from forks are withheld by GitHub, so previews only run for branches
+# pushed to this repo. PRs opened from forks skip the deploy step gracefully.
+#
+# Deploys via `npx wrangler` directly rather than cloudflare/wrangler-action,
+# which this org's Actions allow-list rejects.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+# One preview per PR; cancel superseded builds to save CI minutes and avoid
+# racing two deploys onto the same branch alias.
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  preview:
+    name: Deploy preview
+    runs-on: ubuntu-latest
+    # Skip forks: they can't read the Cloudflare secrets.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Nix + devenv
+        uses: ./.github/actions/setup-nix
+
+      # The packages main.go imports — internal/gen, internal/registry and the
+      # client mock — are generated and not committed, so a fresh checkout does
+      # not compile, same as ci.yml.
+      - name: Generate
+        env:
+          OPENAPI_SPEC_URL: ${{ vars.OPENAPI_SPEC_URL }}
+        run: make generate
+
+      - name: Build HTML docs
+        run: make docs-html
+
+      # cloudflare/wrangler-action isn't on this org's allowed-actions list, so
+      # this calls wrangler the same way that action does under the hood — via
+      # npx on the runner's preinstalled Node.js — as a plain run: step instead
+      # of a uses: step. That also means it isn't subject to the job's devenv
+      # shell default (set explicitly below), since wrangler needs the runner's
+      # own npm registry access, not the devenv toolchain. `--branch` controls
+      # the preview alias: Cloudflare serves it at
+      # https://<branch>.terraform-provider-netskopebwan.pages.dev.
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          output=$(npx --yes wrangler@3 pages deploy docs_html \
+            --project-name=terraform-provider-netskopebwan \
+            --branch="${{ github.head_ref }}" \
+            --commit-dirty=true 2>&1 | tee /dev/stderr)
+          url=$(echo "$output" | grep -oE 'https://[a-zA-Z0-9.-]+\.pages\.dev' | tail -1)
+          echo "deployment-url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Comment preview URL
+        uses: actions/github-script@v7
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.deployment-url }}
+        with:
+          script: |
+            const url = process.env.PREVIEW_URL;
+            const marker = '<!-- cloudflare-pages-preview -->';
+            const body = `${marker}\n### ⚡ Cloudflare Pages preview\n\n`
+              + `| | |\n|--|--|\n`
+              + `| **Preview** | ${url} |\n`
+              + `| **Commit** | \`${context.sha.slice(0, 7)}\` |\n`;
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const existing = comments.data.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
