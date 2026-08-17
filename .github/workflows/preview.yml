@@ -10,6 +10,9 @@ name: Preview
 #
 # Secrets from forks are withheld by GitHub, so previews only run for branches
 # pushed to this repo. PRs opened from forks skip the deploy step gracefully.
+#
+# Deploys via `npx wrangler` directly rather than cloudflare/wrangler-action,
+# which this org's Actions allow-list rejects.
 
 on:
   pull_request:
@@ -52,21 +55,28 @@ jobs:
       - name: Build HTML docs
         run: make docs-html
 
-      # wrangler-action brings its own wrangler and runs as a `uses:` step, so
-      # the job's devenv shell default does not apply to it. `--branch`
-      # controls the preview alias: Cloudflare serves it at
+      # cloudflare/wrangler-action isn't on this org's allowed-actions list, so
+      # this calls wrangler the same way that action does under the hood — via
+      # npx on the runner's preinstalled Node.js — as a plain run: step instead
+      # of a uses: step. That also means it isn't subject to the job's devenv
+      # shell default (set explicitly below), since wrangler needs the runner's
+      # own npm registry access, not the devenv toolchain. `--branch` controls
+      # the preview alias: Cloudflare serves it at
       # https://<branch>.terraform-provider-netskopebwan.pages.dev.
       - name: Deploy to Cloudflare Pages
         id: deploy
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: >-
-            pages deploy docs_html
-            --project-name=terraform-provider-netskopebwan
-            --branch=${{ github.head_ref }}
-            --commit-dirty=true
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          output=$(npx --yes wrangler@3 pages deploy docs_html \
+            --project-name=terraform-provider-netskopebwan \
+            --branch="${{ github.head_ref }}" \
+            --commit-dirty=true 2>&1 | tee /dev/stderr)
+          url=$(echo "$output" | grep -oE 'https://[a-zA-Z0-9.-]+\.pages\.dev' | tail -1)
+          echo "deployment-url=$url" >> "$GITHUB_OUTPUT"
 
       - name: Comment preview URL
         uses: actions/github-script@v7
