@@ -212,7 +212,7 @@ func (d *genericDataSource) search(ctx context.Context, client bwanclient.API, c
 
 	switch len(all.Data) {
 	case 1:
-		return all.Data[0], diags
+		return d.def.Variant.Flatten(all.Data[0]), diags
 	case 0:
 		diags.AddError(
 			fmt.Sprintf("No %s found", d.def.Name),
@@ -242,7 +242,7 @@ func (d *genericDataSource) fetch(ctx context.Context, client bwanclient.API, re
 			return nil, diags
 		}
 
-		all.Data = d.def.Variant.Keep(all.Data)
+		all.Data = d.def.Variant.FlattenAll(d.def.Variant.Keep(all.Data))
 
 		return all.Document(), diags
 	}
@@ -281,5 +281,7 @@ func (d *genericDataSource) fetch(ctx context.Context, client bwanclient.API, re
 		return nil, diags
 	}
 
-	return document, diags
+	// Matches reads the kind off the document as the API shaped it, so reshaping is
+	// the last thing that happens to it.
+	return d.def.Variant.Flatten(document), diags
 }

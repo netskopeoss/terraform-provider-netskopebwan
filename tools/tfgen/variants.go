@@ -44,6 +44,13 @@ type variant struct {
 	// is recognised when the spec has no discriminator: an object carrying `fqdn`
 	// is the fqdn variant of a link monitor.
 	Match []string
+	// Wrapper is the property this variant was lifted out of, empty where it was
+	// left where the API declared it. See hoistWrapper.
+	Wrapper string
+	// Wrapped names the properties that came up out of Wrapper, which is what it
+	// takes to put them back: once hoisted they look like any other property of the
+	// object holding them.
+	Wrapped []string
 	// Schema is the branch merged with whatever the composed schema declared
 	// alongside the composition, so it stands alone as an object's whole schema.
 	Schema map[string]any
@@ -228,6 +235,8 @@ func (p *Prep) emitVariantPaths() {
 					"discriminator": responded.discriminatorPath(),
 					"value":         responded.Value,
 					"match":         toAnyList(responded.Match),
+					"wrapper":       responded.Wrapper,
+					"wrapped":       toAnyList(responded.Wrapped),
 				}
 			case found != nil:
 			case len(p.variantNamesOn(item)) > 0:
@@ -434,10 +443,116 @@ func (p *Prep) variantComponent(ref, name string, inFlight map[string]bool) (str
 		return "", nil, false
 	}
 
+	// The clone now points at one branch, so whatever the API wrapped that branch
+	// in has exactly one thing left inside it and can go.
+	found = p.hoistWrapper(clone, found, "components.schemas."+target)
+
 	p.schemas[target] = clone
 	p.taken[target] = found
 
 	return componentRef(target), found, false
+}
+
+// hoistWrapper lifts a branch out of the property the API nests it under, and
+// drops the discriminator with it.
+//
+// Both only exist to make the shape sayable on the wire. A Terraform type that is
+// one kind of tag already says which kind it is, so requiring `config = { type =
+// "gateway" }` on top of that asks a practitioner to write down what the resource
+// name has already established — and for the two kinds whose branch declares no
+// fields of its own, that is the whole of what they would write. The runtime puts
+// both back when it builds a request; see genresource.Variant.Nest.
+//
+// Only a top-level branch is hoisted: the wrapper has to be a property of this very
+// object, so that what comes up out of it can only meet the object's own fields.
+// The variant returned records what moved, because nothing in the schema can say so
+// afterwards — a hoisted property looks like any other.
+func (p *Prep) hoistWrapper(schema map[string]any, found *variant, loc string) *variant {
+	// A discriminator with no value is one the spec never spelled out for this
+	// branch, which leaves the runtime nothing to write back in its place.
+	if len(found.Path) != 1 || found.Discriminator == "" || found.Value == "" {
+		return found
+	}
+
+	wrapper := found.Path[0]
+
+	props, _ := schema["properties"].(map[string]any)
+
+	entry, ok := props[wrapper].(map[string]any)
+	if !ok {
+		// This object reaches the branch rather than holding it — a collection
+		// envelope around it, say — so there is nothing here to hoist. The variant
+		// keeps whatever the object it reaches recorded, so the metadata describes
+		// an element of the collection.
+		return found
+	}
+
+	branch := p.branchBehind(entry)
+	if branch == nil {
+		return found
+	}
+
+	hoisted, required := hoistedProperties(branch, found.Discriminator)
+
+	for _, name := range slices.Sorted(maps.Keys(hoisted)) {
+		if _, clash := props[name]; clash {
+			// Leaving it wrapped keeps the schema and the runtime agreeing on where
+			// the field lives, which matters more than the tidier shape: the variant
+			// goes back unchanged, so no wrapper is advertised and nothing tries to
+			// unwrap one.
+			p.warnf("%s: cannot hoist %q, it and its parent both declare %q; left wrapped", loc, wrapper, name)
+
+			return found
+		}
+	}
+
+	delete(props, wrapper)
+	maps.Copy(props, hoisted)
+	setRequired(schema, removedFromList(union(stringList(schema["required"]), required), wrapper))
+
+	out := *found
+	out.Wrapper = wrapper
+	out.Wrapped = slices.Sorted(maps.Keys(hoisted))
+
+	return &out
+}
+
+// branchBehind returns the component a hoisted wrapper was narrowed to. Only a
+// reference is followed, and only into the components prep itself built: the
+// wrapper's schema was rewritten to point at one branch, so a wrapper still holding
+// anything else is not one this can hoist.
+func (p *Prep) branchBehind(entry map[string]any) map[string]any {
+	ref, ok := entry["$ref"].(string)
+	if !ok {
+		return nil
+	}
+
+	name, ok := componentName(ref)
+	if !ok {
+		return nil
+	}
+
+	schema, _ := p.schemas[name].(map[string]any)
+
+	return schema
+}
+
+// hoistedProperties returns what a branch contributes to the object it is lifted
+// into: its properties and its required names, both without the discriminator.
+func hoistedProperties(branch map[string]any, discriminator string) (map[string]any, []string) {
+	props, _ := branch["properties"].(map[string]any)
+
+	out := make(map[string]any, len(props))
+
+	for name, value := range props {
+		if name == discriminator {
+			continue
+		}
+
+		out[name] = deepCopy(value)
+	}
+
+	return out, removedFromList(stringList(branch["required"]), discriminator)
 }
 
 // mappedValues lists the discriminator values a mapping spells out.

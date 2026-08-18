@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math/big"
 	"net/http"
 	"testing"
 
@@ -91,6 +92,24 @@ func attributeString(t *testing.T, value tftypes.Value, name string) string {
 	require.NoError(t, member.As(&text))
 
 	return text
+}
+
+func attributeNumber(t *testing.T, value tftypes.Value, name string) int64 {
+	t.Helper()
+
+	var members map[string]tftypes.Value
+	require.NoError(t, value.As(&members))
+
+	member, ok := members[name]
+	require.True(t, ok, "no attribute named %q", name)
+	require.False(t, member.IsNull(), "attribute %q is null", name)
+
+	var number big.Float
+	require.NoError(t, member.As(&number))
+
+	whole, _ := number.Int64()
+
+	return whole
 }
 
 // createResource runs a create against plan and returns the response.

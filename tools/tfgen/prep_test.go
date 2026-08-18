@@ -486,25 +486,88 @@ components:
 		"discriminator": "config.type",
 		"value":         "wanlink",
 		"match":         []any{"wan_link_frequency"},
+		"wrapper":       "config",
+		"wrapped":       []any{"wan_link_frequency"},
 	}, variantMetadataOf(t, doc, "/overlay-tags@wanlink"))
 
 	require.Equal(t, "config.type", variantMetadataOf(t, doc, "/overlay-tags@overlay")["discriminator"])
 	require.Equal(t, "overlay", variantMetadataOf(t, doc, "/overlay-tags@overlay")["value"])
 
-	// No branch declared the property the mapping selects on, so the branch is
-	// completed from the mapping: without this the create body has no way to say
-	// which kind it is creating.
-	config := schema(t, doc, "OverlayTagConfigWanlink")
-	properties, _ := config["properties"].(map[string]any)
+	// The branch is lifted out of the config it arrived in, and the discriminator
+	// goes with it: this Terraform type is the wanlink kind, so a practitioner
+	// writing `config = { type = "wanlink" }` would only be repeating the resource
+	// name back. The runtime writes both from the metadata above.
+	for _, name := range []string{"OverlayTagWanlink", "OverlayTagCreateWanlink"} {
+		object := schema(t, doc, name)
+		properties, _ := object["properties"].(map[string]any)
 
-	kind, _ := properties["type"].(map[string]any)
-	require.Equal(t, "string", kind["type"])
-	require.Equal(t, []string{"wanlink"}, anyStrings(kind["enum"]))
-	require.Contains(t, stringList(config["required"]), "type")
+		require.Contains(t, properties, "wan_link_frequency", name)
+		require.NotContains(t, properties, "config", name)
+		require.NotContains(t, properties, "type", name)
+		require.NotContains(t, properties, "overlay_private", name)
 
-	// The narrowed config holds only its own branch's fields.
-	require.Contains(t, properties, "wan_link_frequency")
-	require.NotContains(t, properties, "overlay_private")
+		require.Contains(t, stringList(object["required"]), "name", name)
+		require.NotContains(t, stringList(object["required"]), "config", name)
+		require.NotContains(t, stringList(object["required"]), "type", name)
+	}
+
+	// The other kind is hoisted into its own copy, not into this one.
+	overlay, _ := schema(t, doc, "OverlayTagOverlay")["properties"].(map[string]any)
+	require.Contains(t, overlay, "overlay_private")
+	require.NotContains(t, overlay, "wan_link_frequency")
+}
+
+// A wrapper is only hoisted where what comes out of it can be told from what is
+// already there. Anything else keeps the shape the API declared, because a schema
+// that has quietly merged two fields into one is worse than a schema with a
+// redundant level in it.
+func TestPrepLeavesACollidingWrapperAlone(t *testing.T) {
+	doc, warnings := runPrepClaiming(t, `
+paths:
+  /overlay-tags:
+    get:
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/OverlayTag'}
+components:
+  schemas:
+    OverlayTagWanlinkConfig:
+      type: object
+      properties:
+        name: {type: string}
+    OverlayTagOverlayConfig:
+      type: object
+      properties:
+        overlay_private: {type: boolean}
+    OverlayTagConfig:
+      oneOf:
+        - $ref: '#/components/schemas/OverlayTagWanlinkConfig'
+        - $ref: '#/components/schemas/OverlayTagOverlayConfig'
+      discriminator:
+        propertyName: type
+        mapping:
+          wanlink: '#/components/schemas/OverlayTagWanlinkConfig'
+          overlay: '#/components/schemas/OverlayTagOverlayConfig'
+    OverlayTag:
+      type: object
+      required: [name, config]
+      properties:
+        name: {type: string}
+        config: {$ref: '#/components/schemas/OverlayTagConfig'}
+`, map[string][]string{"/overlay-tags": {"wanlink"}})
+
+	require.Len(t, warnings, 1)
+	require.Contains(t, warnings[0], `cannot hoist "config"`)
+	require.Contains(t, warnings[0], `both declare "name"`)
+
+	// Wrapped in the schema and no wrapper in the metadata: the two halves have to
+	// agree, or the runtime would unwrap something that was never wrapped.
+	properties, _ := schema(t, doc, "OverlayTagWanlink")["properties"].(map[string]any)
+	require.Contains(t, properties, "config")
+
+	require.Empty(t, variantMetadataOf(t, doc, "/overlay-tags@wanlink")["wrapper"])
 }
 
 // A branch named after anything other than a discriminator mapping is left
@@ -543,6 +606,10 @@ components:
 	require.Empty(t, metadata["discriminator"])
 	require.Empty(t, metadata["value"])
 	require.Equal(t, []any{"fqdn"}, metadata["match"])
+
+	// Nothing was hoisted either: with no value to write in its place, a
+	// discriminator the runtime removed from a request could not be put back.
+	require.Empty(t, metadata["wrapper"])
 
 	properties, _ := schema(t, doc, "MonitorFqdn")["properties"].(map[string]any)
 	require.NotContains(t, properties, "type")

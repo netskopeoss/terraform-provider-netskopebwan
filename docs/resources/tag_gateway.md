@@ -16,9 +16,6 @@ description: |-
 # Generated from the provider's schema: the arguments this object requires, with
 # placeholders to fill in. Remove these two lines to maintain the example by hand.
 resource "netskopebwan_tag_gateway" "example" {
-  config = {
-    type = "gateway"
-  }
   name = "example"
 }
 ```
@@ -28,7 +25,6 @@ resource "netskopebwan_tag_gateway" "example" {
 
 ### Required
 
-- `config` (Attributes) (see [below for nested schema](#nestedatt--config))
 - `name` (String)
 
 ### Optional
@@ -44,14 +40,6 @@ resource "netskopebwan_tag_gateway" "example" {
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
 - `system` (Boolean)
-
-<a id="nestedatt--config"></a>
-### Nested Schema for `config`
-
-Required:
-
-- `type` (String) Must be one of: `gateway`.
-
 
 <a id="nestedatt--created_by"></a>
 ### Nested Schema for `created_by`

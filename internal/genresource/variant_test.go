@@ -246,6 +246,221 @@ func TestListDataSourceDropsTheOtherKinds(t *testing.T) {
 	require.Len(t, dataElements(t, resp.State.Raw), 2, "only the wanlink tags belong to this data source")
 }
 
+// hoistedTagDefinition mirrors a tag as the generator now emits it: the fields the
+// API nests under `config` sit beside the tag's own, and the discriminator inside it
+// is gone. Compare tagDefinition, which is the same object with nothing hoisted —
+// both shapes are real, because a variant the API does not wrap has nothing to hoist.
+func hoistedTagDefinition(kind string, wrapped ...string) Definition {
+	attributes := map[string]rschema.Attribute{
+		"id":   rschema.StringAttribute{Computed: true},
+		"name": rschema.StringAttribute{Required: true},
+	}
+
+	for _, name := range wrapped {
+		attributes[name] = rschema.Int64Attribute{Optional: true}
+	}
+
+	return Definition{
+		Name:   "tag_" + kind,
+		Schema: func(_ context.Context) rschema.Schema { return rschema.Schema{Attributes: attributes} },
+		Create: Operation{Method: http.MethodPost, Path: "/overlay-tags"},
+		Read:   Operation{Method: http.MethodGet, Path: "/overlay-tags/{id}"},
+		Update: Operation{Method: http.MethodPatch, Path: "/overlay-tags/{id}"},
+		Delete: Operation{Method: http.MethodDelete, Path: "/overlay-tags/{id}"},
+		Variant: &Variant{
+			Name: kind, Discriminator: "config.type", Value: kind,
+			Wrapper: "config", Wrapped: wrapped,
+		},
+	}
+}
+
+// TestHoistedFieldsReachTheAPIWrapped is the shape check in the write direction: the
+// practitioner writes a tag's fields beside its name, the API is sent the config it
+// declared, with the kind in it.
+func TestHoistedFieldsReachTheAPIWrapped(t *testing.T) {
+	api, meta := newAPI(t)
+
+	api.EXPECT().
+		Do(gomock.Any(), request(http.MethodPost, "/overlay-tags").
+			withBody(`{"name": "corp", "config": {"type": "wanlink", "wan_link_frequency": 60}}`)).
+		Return(json.RawMessage(`{"id": "tag-1", "name": "corp", "config": {"type": "wanlink", "wan_link_frequency": 60}}`), nil)
+
+	def := hoistedTagDefinition("wanlink", "wan_link_frequency")
+	res, schema := newResource(t, def, meta)
+
+	plan := objectValue(t, schema, map[string]tftypes.Value{
+		"id":                 tftypes.NewValue(tftypes.String, tftypes.UnknownValue),
+		"name":               tftypes.NewValue(tftypes.String, "corp"),
+		"wan_link_frequency": tftypes.NewValue(tftypes.Number, 60),
+	})
+
+	resp := createResource(t, res, schema, plan)
+
+	require.False(t, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
+	require.Equal(t, "tag-1", attributeString(t, resp.State.Raw, "id"))
+}
+
+// TestAKindWithNoFieldsOfItsOwnStillSaysWhatItIs is the case that makes the wrapper
+// worth removing at all: a topology tag's whole configuration is the statement that
+// it is a topology tag, so before this there was nothing for a practitioner to write
+// in `config` but the resource name over again.
+func TestAKindWithNoFieldsOfItsOwnStillSaysWhatItIs(t *testing.T) {
+	api, meta := newAPI(t)
+
+	api.EXPECT().
+		Do(gomock.Any(), request(http.MethodPost, "/overlay-tags").
+			withBody(`{"name": "corp", "config": {"type": "topology"}}`)).
+		Return(json.RawMessage(`{"id": "tag-1", "name": "corp", "config": {"type": "topology"}}`), nil)
+
+	res, schema := newResource(t, hoistedTagDefinition("topology"), meta)
+
+	plan := objectValue(t, schema, map[string]tftypes.Value{
+		"id":   tftypes.NewValue(tftypes.String, tftypes.UnknownValue),
+		"name": tftypes.NewValue(tftypes.String, "corp"),
+	})
+
+	resp := createResource(t, res, schema, plan)
+
+	require.False(t, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
+	require.Equal(t, "tag-1", attributeString(t, resp.State.Raw, "id"))
+}
+
+// TestHoistedFieldsComeBackFlat is the read direction, and it is where drift has to
+// stay visible: a frequency the API changed inside `config` has to reach a state
+// attribute that is not nested at all.
+func TestHoistedFieldsComeBackFlat(t *testing.T) {
+	api, meta := newAPI(t)
+
+	api.EXPECT().
+		Do(gomock.Any(), request(http.MethodGet, "/overlay-tags/tag-1")).
+		Return(json.RawMessage(`{"id": "tag-1", "name": "renamed", "config": {"type": "wanlink", "wan_link_frequency": 90}}`), nil)
+
+	def := hoistedTagDefinition("wanlink", "wan_link_frequency")
+	res, schema := newResource(t, def, meta)
+
+	state := objectValue(t, schema, map[string]tftypes.Value{
+		"id":                 tftypes.NewValue(tftypes.String, "tag-1"),
+		"name":               tftypes.NewValue(tftypes.String, "corp"),
+		"wan_link_frequency": tftypes.NewValue(tftypes.Number, 60),
+	})
+
+	resp := readResource(t, res, schema, state)
+
+	require.False(t, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
+	require.Equal(t, "renamed", attributeString(t, resp.State.Raw, "name"))
+	require.Equal(t, int64(90), attributeNumber(t, resp.State.Raw, "wan_link_frequency"))
+}
+
+// TestHoistedFieldsComeBackFlatFromACollection covers the same reshaping one level
+// down: a collection is recognised element by element, so it is flattened that way
+// too, and the discriminator each element is recognised by is still where the API put
+// it when Keep reads it.
+func TestHoistedFieldsComeBackFlatFromACollection(t *testing.T) {
+	api, meta := newAPI(t)
+
+	api.EXPECT().
+		Do(gomock.Any(), request(http.MethodGet, "/overlay-tags")).
+		Return(page("", false,
+			object("1", "a", map[string]any{"config": map[string]any{"type": "wanlink", "wan_link_frequency": 60}}),
+			object("2", "b", map[string]any{"config": map[string]any{"type": "overlay"}}),
+		), nil)
+
+	def := DataSourceDefinition{
+		Name: "tags_wanlink",
+		Schema: func(_ context.Context) dschema.Schema {
+			return dschema.Schema{
+				Attributes: map[string]dschema.Attribute{
+					"after":  dschema.StringAttribute{Optional: true, Computed: true},
+					"first":  dschema.Int64Attribute{Optional: true, Computed: true},
+					"filter": dschema.StringAttribute{Optional: true, Computed: true},
+					"sort":   dschema.ListAttribute{Optional: true, Computed: true, ElementType: types.StringType},
+					"data": dschema.ListNestedAttribute{
+						Computed: true,
+						NestedObject: dschema.NestedAttributeObject{
+							Attributes: map[string]dschema.Attribute{
+								"id":                 dschema.StringAttribute{Computed: true},
+								"name":               dschema.StringAttribute{Computed: true},
+								"wan_link_frequency": dschema.Int64Attribute{Computed: true},
+							},
+						},
+					},
+					"page_info": dschema.SingleNestedAttribute{
+						Computed: true,
+						Attributes: map[string]dschema.Attribute{
+							"end_cursor":  dschema.StringAttribute{Computed: true},
+							"has_next":    dschema.BoolAttribute{Computed: true},
+							"total_count": dschema.Int64Attribute{Computed: true},
+						},
+					},
+				},
+			}
+		},
+		Read: Operation{Method: http.MethodGet, Path: "/overlay-tags"},
+		Variant: &Variant{
+			Name: "wanlink", Discriminator: "config.type", Value: "wanlink",
+			Wrapper: "config", Wrapped: []string{"wan_link_frequency"},
+		},
+	}
+
+	source, schema := newDataSource(t, def, meta)
+
+	resp := readDataSource(t, source, schema, configFor(t, schema, nil))
+
+	require.False(t, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
+
+	elements := dataElements(t, resp.State.Raw)
+	require.Len(t, elements, 1, "only the wanlink tags belong to this data source")
+	require.Equal(t, int64(60), attributeNumber(t, elements[0], "wan_link_frequency"))
+}
+
+func TestFlattenAndNestAreInversesOfEachOther(t *testing.T) {
+	wanlink := &Variant{
+		Name: "wanlink", Discriminator: "config.type", Value: "wanlink",
+		Wrapper: "config", Wrapped: []string{"wan_link_frequency"},
+	}
+
+	flat := map[string]any{"name": "corp", "wan_link_frequency": float64(60)}
+	wrapped := map[string]any{
+		"name":   "corp",
+		"config": map[string]any{"type": "wanlink", "wan_link_frequency": float64(60)},
+	}
+
+	require.Equal(t, flat, wanlink.Flatten(wrapped))
+	require.Equal(t, wrapped, wanlink.Nest(flat))
+
+	// A field the API grew that the schema has never heard of comes up with the
+	// rest rather than being dropped on the floor here: Apply ignores what the
+	// schema does not declare, so this is not the place to decide it is unwanted.
+	require.Equal(t,
+		map[string]any{"name": "corp", "added_later": true},
+		wanlink.Flatten(map[string]any{
+			"name":   "corp",
+			"config": map[string]any{"type": "wanlink", "added_later": true},
+		}))
+
+	// A response with no config at all leaves the object alone. Removing the key
+	// regardless would turn "the API said nothing" into "the API said null", which
+	// a refresh reads as the field having been cleared.
+	require.Equal(t, map[string]any{"name": "corp"}, wanlink.Flatten(map[string]any{"name": "corp"}))
+}
+
+// Nothing is reshaped for a variant the generator left as the API declared it, which
+// is every variant whose branch was already the object itself.
+func TestAnUnwrappedVariantReshapesNothing(t *testing.T) {
+	for name, variant := range map[string]*Variant{
+		"nil":        nil,
+		"no wrapper": {Name: "model_name", Match: []string{"model"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			document := map[string]any{"model": "NSGVirtual", "config": map[string]any{"type": "x"}}
+
+			require.Equal(t, document, variant.Flatten(document))
+			require.Equal(t, document, variant.Nest(document))
+			require.Equal(t, []any{document}, variant.FlattenAll([]any{document}))
+		})
+	}
+}
+
 // monitorDefinition mirrors a link monitor: one resource whose target takes one of
 // three forms, each a block of its own.
 func monitorDefinition() Definition {
