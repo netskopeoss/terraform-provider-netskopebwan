@@ -48,7 +48,7 @@ resource "netskopebwan_vpnpeer" "example" {
 ### Optional
 
 - `ip_location` (Boolean) Indicates whether Ip Location is enabled
-- `type` (String) type of the vpn peer
+- `type` (String) type of the vpn peer Must be one of: `IKEV2`, `GRE`.
 
 ### Read-Only
 
@@ -67,8 +67,8 @@ Required:
 
 - `dh_group` (Number) Dh Group of the VPN Peer.
 - `dpd_timeout` (Number) Dpd Timeout in seconds
-- `encryption` (String) type of encryption to be used
-- `hash` (String) type of hash to be used
+- `encryption` (String) type of encryption to be used Must be one of: `any`, `AES_CBC_128`, `AES_CBC_192`, `AES_CBC_256`, `AES_GCM_128`, `AES_GCM_192`, `AES_GCM_256`.
+- `hash` (String) type of hash to be used Must be one of: `any`, `SHA2_256`, `SHA2_384`, `SHA2_512`.
 - `ike_sa_lifetime` (Number) Ike SA Lifetime in seconds
 - `ipsec_sa_lifetime` (Number) Ipsec SA Lifetime in seconds
 

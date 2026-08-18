@@ -54,7 +54,7 @@ Read-Only:
 
 - `overlay_private` (Boolean)
 - `overlay_reachable` (Boolean)
-- `type` (String)
+- `type` (String) Must be one of: `overlay`.
 
 
 <a id="nestedatt--created_by"></a>

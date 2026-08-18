@@ -12,6 +12,13 @@ import (
 // runtime treats those attributes as embedded JSON documents.
 const RawJSONDescriptionSuffix = "Raw JSON document, encoded as a string."
 
+// EnumDescriptionPrefix introduces the allowed-values list appended to the
+// description of every schema carrying an `enum`. The generator already turns
+// `enum` into a validator on its own; nothing but the description reaches
+// tfplugindocs, so this is the only way a practitioner sees the values a
+// generated page does not otherwise restate.
+const EnumDescriptionPrefix = "Must be one of:"
+
 // maxRefHops bounds $ref chasing so a self-referential spec cannot hang the
 // generator.
 const maxRefHops = 16
@@ -389,6 +396,7 @@ func (p *Prep) transformSchema(schema map[string]any, loc string) {
 
 	p.collapseComposition(schema, loc)
 	p.typeUntyped(schema, loc)
+	p.documentEnum(schema, loc)
 }
 
 // collapseComposition rewrites a composed schema into something the generator can
@@ -520,6 +528,26 @@ func (p *Prep) typeUntyped(schema map[string]any, loc string) {
 
 	schema["type"] = "string"
 	schema["description"] = strings.TrimSpace(stringOr(schema["description"]) + " " + RawJSONDescriptionSuffix)
+}
+
+// documentEnum appends the allowed values to the description of a schema
+// carrying an `enum`, so the list a validator already enforces also reaches the
+// generated docs. Non-string members are left out of the list: an enum mixing
+// scalar types is not something the BWAN spec does today, and stringifying a
+// number or bool loses whether it round-trips as one.
+func (p *Prep) documentEnum(schema map[string]any, loc string) {
+	values := stringList(schema["enum"])
+	if len(values) == 0 {
+		return
+	}
+
+	quoted := make([]string, len(values))
+	for i, value := range values {
+		quoted[i] = "`" + value + "`"
+	}
+
+	suffix := EnumDescriptionPrefix + " " + strings.Join(quoted, ", ") + "."
+	schema["description"] = strings.TrimSpace(stringOr(schema["description"]) + " " + suffix)
 }
 
 // isNullSchema reports whether a composition variant only exists to make its

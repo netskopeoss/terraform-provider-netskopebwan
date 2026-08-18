@@ -52,7 +52,7 @@ data "netskopebwan_tag_topology" "by_filter" {
 
 Read-Only:
 
-- `type` (String)
+- `type` (String) Must be one of: `topology`.
 
 
 <a id="nestedatt--created_by"></a>

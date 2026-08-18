@@ -31,7 +31,7 @@ resource "netskopebwan_address_object" "example" {
 - `address` (String) Address of the Address Object
 - `group_id` (String) Address Group ID
 - `name` (String) Display name of the Address Object
-- `type` (String) Type of the Address Object
+- `type` (String) Type of the Address Object Must be one of: `ipv4`, `ipv6`, `mac`.
 
 ### Optional
 

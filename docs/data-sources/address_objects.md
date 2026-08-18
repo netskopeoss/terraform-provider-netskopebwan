@@ -56,7 +56,7 @@ Read-Only:
 - `site_id` (String) SiteId of the Address Object
 - `tags` (List of String) Tags associated with the Address Object
 - `tenant_id` (String) TenantId of the Address Object
-- `type` (String) Type of the Address Object
+- `type` (String) Type of the Address Object Must be one of: `ipv4`, `ipv6`, `mac`.
 
 <a id="nestedatt--data--created_by"></a>
 ### Nested Schema for `data.created_by`

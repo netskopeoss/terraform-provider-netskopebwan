@@ -36,7 +36,7 @@ data "netskopebwan_user" "by_filter" {
 
 ### Read-Only
 
-- `controlled` (String)
+- `controlled` (String) Must be one of: `manual`, `sso`, `x509`, `idp`.
 - `created_at` (String)
 - `created_by` (Attributes) (see [below for nested schema](#nestedatt--created_by))
 - `email` (String)

@@ -34,7 +34,7 @@ resource "netskopebwan_tenant" "example" {
 - `description` (String)
 - `enabled` (Boolean)
 - `labels` (List of String)
-- `type` (String)
+- `type` (String) Must be one of: `network`, `msp`, `master_msp`, `operator`.
 
 ### Read-Only
 

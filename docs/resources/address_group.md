@@ -41,7 +41,7 @@ resource "netskopebwan_address_group" "example" {
 For example '2019-05-08T05:30:30.206Z'
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
-- `usage_type` (String) Usage type of the Address Group
+- `usage_type` (String) Usage type of the Address Group Must be one of: `device`, `static`.
 
 <a id="nestedatt--created_by"></a>
 ### Nested Schema for `created_by`

@@ -32,7 +32,7 @@ resource "netskopebwan_cloud_account" "example" {
 
 ### Required
 
-- `cloud_provider` (String)
+- `cloud_provider` (String) Must be one of: `aws`, `azure`, `gcp`, `netskope`, `device_security`.
 - `config` (Attributes) (see [below for nested schema](#nestedatt--config))
 - `name` (String)
 

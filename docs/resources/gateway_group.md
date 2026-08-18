@@ -27,7 +27,7 @@ resource "netskopebwan_gateway_group" "example" {
 ### Required
 
 - `name` (String)
-- `type` (String)
+- `type` (String) Must be one of: `hub`, `spoke`.
 
 ### Optional
 

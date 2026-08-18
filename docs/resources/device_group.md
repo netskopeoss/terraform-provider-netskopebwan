@@ -29,7 +29,7 @@ resource "netskopebwan_device_group" "example" {
 ### Required
 
 - `address` (String) Address of the device group
-- `address_type` (String) Type of the Address Object
+- `address_type` (String) Type of the Address Object Must be one of: `ipv4`, `ipv6`, `mac`.
 - `group_name` (String) Name of the device group
 - `segment_id` (Number) Segment id for this address
 
@@ -50,7 +50,7 @@ For example '2019-05-08T05:30:30.206Z'
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
 - `name` (String) Display name of the Device Group
-- `usage_type` (String) Usage type of the Address Group
+- `usage_type` (String) Usage type of the Address Group Must be one of: `device`, `static`.
 
 <a id="nestedatt--created_by"></a>
 ### Nested Schema for `created_by`

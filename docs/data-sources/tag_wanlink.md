@@ -52,7 +52,7 @@ data "netskopebwan_tag_wanlink" "by_filter" {
 
 Read-Only:
 
-- `type` (String)
+- `type` (String) Must be one of: `wanlink`.
 - `wan_link_frequency` (Number)
 
 

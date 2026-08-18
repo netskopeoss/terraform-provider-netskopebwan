@@ -51,7 +51,7 @@ resource "netskopebwan_tag_overlay" "example" {
 
 Required:
 
-- `type` (String)
+- `type` (String) Must be one of: `overlay`.
 
 Optional:
 

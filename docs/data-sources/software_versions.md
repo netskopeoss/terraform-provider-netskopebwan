@@ -42,7 +42,7 @@ data "netskopebwan_software_versions" "example" {
 
 Read-Only:
 
-- `channel` (String)
+- `channel` (String) Must be one of: `ga`, `beta`, `experimental`, `gold`, `none`.
 - `controller` (Boolean)
 - `customer_channels` (List of String)
 - `id` (String)

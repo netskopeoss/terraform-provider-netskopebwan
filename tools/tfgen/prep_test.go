@@ -236,6 +236,35 @@ components:
 	require.Equal(t, "The device configuration. "+wantMarker, stringOr(described["description"]))
 }
 
+func TestPrepDocumentsEnumValues(t *testing.T) {
+	doc, warnings := runPrepOn(t, `
+components:
+  schemas:
+    Gateway:
+      type: object
+      properties:
+        model:
+          type: string
+          enum: [NSGVirtual, NSG100W]
+        protocol:
+          type: string
+          description: Protocol Enum
+          enum: [TCP, UDP]
+`)
+
+	require.Empty(t, warnings)
+
+	gateway := schema(t, doc, "Gateway")
+	properties, _ := gateway["properties"].(map[string]any)
+
+	model, _ := properties["model"].(map[string]any)
+	require.Equal(t, "Must be one of: `NSGVirtual`, `NSG100W`.", stringOr(model["description"]))
+
+	// An existing description is kept, with the allowed values appended.
+	protocol, _ := properties["protocol"].(map[string]any)
+	require.Equal(t, "Protocol Enum Must be one of: `TCP`, `UDP`.", stringOr(protocol["description"]))
+}
+
 func TestPrepRenamesDashedPathParameters(t *testing.T) {
 	doc, warnings := runPrepOn(t, `
 paths:

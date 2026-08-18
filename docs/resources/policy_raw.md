@@ -38,7 +38,7 @@ resource "netskopebwan_policy_raw" "example" {
 - `name` (String)
 - `policy_config_raw` (String) Raw JSON document, encoded as a string.
 - `productivity_score_config_raw` (String) Raw JSON document, encoded as a string.
-- `type` (String)
+- `type` (String) Must be one of: `client`, `gateway`.
 
 ### Read-Only
 

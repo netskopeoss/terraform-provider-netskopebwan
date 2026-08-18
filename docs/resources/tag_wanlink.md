@@ -51,7 +51,7 @@ resource "netskopebwan_tag_wanlink" "example" {
 
 Required:
 
-- `type` (String)
+- `type` (String) Must be one of: `wanlink`.
 
 Optional:
 

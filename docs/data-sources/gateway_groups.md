@@ -52,7 +52,7 @@ Read-Only:
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--data--modified_by))
 - `name` (String)
 - `tenant_id` (String)
-- `type` (String)
+- `type` (String) Must be one of: `hub`, `spoke`.
 
 <a id="nestedatt--data--created_by"></a>
 ### Nested Schema for `data.created_by`

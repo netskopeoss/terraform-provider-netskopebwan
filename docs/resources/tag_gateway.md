@@ -51,7 +51,7 @@ resource "netskopebwan_tag_gateway" "example" {
 
 Required:
 
-- `type` (String)
+- `type` (String) Must be one of: `gateway`.
 
 
 <a id="nestedatt--created_by"></a>

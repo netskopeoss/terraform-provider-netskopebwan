@@ -48,7 +48,7 @@ data "netskopebwan_policy_raw" "by_filter" {
 - `name` (String)
 - `policy_config_raw` (String) Raw JSON document, encoded as a string.
 - `productivity_score_config_raw` (String) Raw JSON document, encoded as a string.
-- `type` (String)
+- `type` (String) Must be one of: `client`, `gateway`.
 
 <a id="nestedatt--created_by"></a>
 ### Nested Schema for `created_by`

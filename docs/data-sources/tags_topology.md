@@ -59,7 +59,7 @@ Read-Only:
 
 Read-Only:
 
-- `type` (String)
+- `type` (String) Must be one of: `topology`.
 
 
 <a id="nestedatt--data--created_by"></a>
