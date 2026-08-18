@@ -63,7 +63,7 @@ Read-Only:
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--data--modified_by))
 - `mtu_bytes` (Number)
-- `multi_link_support` (String) Multilink support type
+- `multi_link_support` (String) Multilink support type Must be one of: `none`, `active_active`, `active_standby`.
 - `name` (String)
 - `on_premise_detection` (Attributes) (see [below for nested schema](#nestedatt--data--on_premise_detection))
 - `policy_id` (String)

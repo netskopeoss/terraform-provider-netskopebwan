@@ -36,7 +36,7 @@ data "netskopebwan_cloud_account" "by_filter" {
 
 ### Read-Only
 
-- `cloud_provider` (String)
+- `cloud_provider` (String) Must be one of: `aws`, `azure`, `gcp`, `netskope`, `device_security`.
 - `config` (Attributes) (see [below for nested schema](#nestedatt--config))
 - `created_at` (String)
 - `created_by` (Attributes) (see [below for nested schema](#nestedatt--created_by))

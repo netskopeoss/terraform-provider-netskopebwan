@@ -52,7 +52,7 @@ For example '2019-05-08T05:30:30.206Z'
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--data--modified_by))
 - `name` (String) Display name of the Device Group
-- `usage_type` (String) Usage type of the Address Group
+- `usage_type` (String) Usage type of the Address Group Must be one of: `device`, `static`.
 
 <a id="nestedatt--data--created_by"></a>
 ### Nested Schema for `data.created_by`

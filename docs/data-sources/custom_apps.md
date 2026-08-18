@@ -77,7 +77,7 @@ Read-Only:
 
 - `host` (String)
 - `port_range` (String)
-- `protocol` (String)
+- `protocol` (String) Must be one of: `tcp`, `udp`, `icmp`, `ipv4`.
 - `web_access` (Boolean)
 
 
@@ -89,7 +89,7 @@ Read-Only:
 - `address_group_ids` (List of String)
 - `hosts` (List of String)
 - `port_range` (Attributes List) (see [below for nested schema](#nestedatt--data--definitions_v2--port_range))
-- `protocol` (String)
+- `protocol` (String) Must be one of: `tcp`, `udp`, `icmp`, `ipv4`.
 - `web_access` (Boolean)
 
 <a id="nestedatt--data--definitions_v2--port_range"></a>

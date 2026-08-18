@@ -51,7 +51,7 @@ resource "netskopebwan_tag_topology" "example" {
 
 Required:
 
-- `type` (String)
+- `type` (String) Must be one of: `topology`.
 
 
 <a id="nestedatt--created_by"></a>
