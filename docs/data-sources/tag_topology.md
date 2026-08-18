@@ -45,7 +45,6 @@ data "netskopebwan_tag_topology" "by_filter" {
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
 - `name` (String)
 - `system` (Boolean)
-- `tenant_id` (String)
 
 <a id="nestedatt--config"></a>
 ### Nested Schema for `config`

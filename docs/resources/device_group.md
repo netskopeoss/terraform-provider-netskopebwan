@@ -45,8 +45,6 @@ resource "netskopebwan_device_group" "example" {
 - `created_at` (String)
 - `created_by` (Attributes) (see [below for nested schema](#nestedatt--created_by))
 - `id` (String) Device Group ID
-- `latest_member_modified_at` (String) The timestamp indicating the last modification of a member in ISO 8601 format
-For example '2019-05-08T05:30:30.206Z'
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
 - `name` (String) Display name of the Device Group

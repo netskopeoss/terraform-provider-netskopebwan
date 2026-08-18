@@ -67,7 +67,6 @@ resource "netskopebwan_custom_app" "example" {
 - 35: Streaming
 - 36: Collaborative
 - `definitions` (Attributes List) (see [below for nested schema](#nestedatt--definitions))
-- `definitions_v2` (Attributes List) (see [below for nested schema](#nestedatt--definitions_v2))
 - `description` (String)
 - `enabled` (Boolean)
 - `icon_url` (String)
@@ -92,25 +91,14 @@ resource "netskopebwan_custom_app" "example" {
 
 Optional:
 
-- `host` (String)
-- `port_range` (String)
-- `protocol` (String) Must be one of: `tcp`, `udp`, `icmp`, `ipv4`.
-- `web_access` (Boolean)
-
-
-<a id="nestedatt--definitions_v2"></a>
-### Nested Schema for `definitions_v2`
-
-Optional:
-
 - `address_group_ids` (List of String)
 - `hosts` (List of String)
-- `port_range` (Attributes List) (see [below for nested schema](#nestedatt--definitions_v2--port_range))
+- `port_range` (Attributes List) (see [below for nested schema](#nestedatt--definitions--port_range))
 - `protocol` (String) Must be one of: `tcp`, `udp`, `icmp`, `ipv4`.
 - `web_access` (Boolean)
 
-<a id="nestedatt--definitions_v2--port_range"></a>
-### Nested Schema for `definitions_v2.port_range`
+<a id="nestedatt--definitions--port_range"></a>
+### Nested Schema for `definitions.port_range`
 
 Required:
 

@@ -46,8 +46,6 @@ Read-Only:
 - `created_by` (Attributes) (see [below for nested schema](#nestedatt--data--created_by))
 - `description` (String) Description of the Address Group
 - `id` (String)
-- `latest_member_modified_at` (String) The timestamp indicating the last modification of a member in ISO 8601 format
-For example '2019-05-08T05:30:30.206Z'
 - `metadata_tags` (List of String) Tags associated with the Address Group
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--data--modified_by))

@@ -67,6 +67,11 @@ type Prep struct {
 	// exposed under, for the names Terraform reserves.
 	renames map[string]string
 
+	// drops lists the API fields removed from every schema before renames run,
+	// so a field superseded by a differently-named replacement can hand its name
+	// over without the collision guard in renameReservedProperties refusing it.
+	drops []string
+
 	// taken records the branch each synthetic component was built from, so the
 	// metadata reaches the path that references it. direct marks the components
 	// that are a branch themselves rather than a clone reaching one.
@@ -106,8 +111,16 @@ func (p *Prep) Rename(from, to string) {
 	p.renames[from] = to
 }
 
+// Drop removes an API field from every schema, ahead of any renames.
+func (p *Prep) Drop(name string) {
+	if !slices.Contains(p.drops, name) {
+		p.drops = append(p.drops, name)
+	}
+}
+
 func (p *Prep) Run() {
 	p.renameDashedPathParams()
+	p.dropProperties()
 	p.renameReservedProperties()
 
 	// Claimed paths are cloned before anything is normalised: once a composed
@@ -207,6 +220,53 @@ func renamedList(values []string, from, to string) []string {
 		}
 
 		out = append(out, value)
+	}
+
+	return out
+}
+
+// dropProperties removes a field superseded by a differently-named replacement
+// from every schema, before renameReservedProperties runs. Every schema is
+// rewritten, not only the ones a resource claims, for the same reason renames
+// are: the field is named the same thing wherever it turns up.
+func (p *Prep) dropProperties() {
+	if len(p.drops) == 0 {
+		return
+	}
+
+	for _, name := range slices.Sorted(maps.Keys(p.schemas)) {
+		schema, ok := p.schemas[name].(map[string]any)
+		if !ok {
+			continue
+		}
+
+		props, ok := schema["properties"].(map[string]any)
+		if !ok {
+			continue
+		}
+
+		for _, drop := range p.drops {
+			if _, ok := props[drop]; !ok {
+				continue
+			}
+
+			delete(props, drop)
+			schema["required"] = toAnyList(removedFromList(stringList(schema["required"]), drop))
+		}
+
+		if len(stringList(schema["required"])) == 0 {
+			delete(schema, "required")
+		}
+	}
+}
+
+func removedFromList(values []string, name string) []string {
+	out := make([]string, 0, len(values))
+
+	for _, value := range values {
+		if value != name {
+			out = append(out, value)
+		}
 	}
 
 	return out

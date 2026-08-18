@@ -33,7 +33,6 @@ resource "netskopebwan_controller" "example" {
 
 ### Optional
 
-- `overlay_auth` (Attributes) Overlay Authentication (see [below for nested schema](#nestedatt--overlay_auth))
 - `provision` (Boolean) Indicates if the controller is provisioned
 - `replicas` (Number) Number of replicas for the controller
 - `resource_request` (Attributes) Resource request for the controller (see [below for nested schema](#nestedatt--resource_request))
@@ -49,15 +48,6 @@ resource "netskopebwan_controller" "example" {
 - `overlay_id` (Number) Overlay ID
 - `overlay_ip` (String) Overlay IP
 - `overlay_pubkey` (String) Overlay public key
-
-<a id="nestedatt--overlay_auth"></a>
-### Nested Schema for `overlay_auth`
-
-Required:
-
-- `psk` (String) PSK
-- `public_key` (String) Public key
-
 
 <a id="nestedatt--resource_request"></a>
 ### Nested Schema for `resource_request`

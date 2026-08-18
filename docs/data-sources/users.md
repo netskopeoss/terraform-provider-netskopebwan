@@ -52,7 +52,6 @@ Read-Only:
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--data--modified_by))
 - `name` (String)
-- `raw_role` (String) The internal representation of the user's role, we are migrating from raw_role to role as we transition to a more structured role system.
 
 <a id="nestedatt--data--created_by"></a>
 ### Nested Schema for `data.created_by`

@@ -39,8 +39,6 @@ data "netskopebwan_device_group" "by_filter" {
 - `created_at` (String)
 - `created_by` (Attributes) (see [below for nested schema](#nestedatt--created_by))
 - `description` (String) Description of the Device Group
-- `latest_member_modified_at` (String) The timestamp indicating the last modification of a member in ISO 8601 format
-For example '2019-05-08T05:30:30.206Z'
 - `metadata_tags` (List of String) Tags associated with the Device Group
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))

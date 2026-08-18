@@ -380,17 +380,20 @@ func TestGatewayAndPolicyAreExposedAsRawObjects(t *testing.T) {
 	require.Equal(t, "gateway", names["gateway_raw"])
 	require.Equal(t, "gateway_template", names["gateway_template_raw"])
 	require.Equal(t, "policy", names["policy_raw"])
-	require.Equal(t, "client_template", names["client_template_raw"])
 
 	// A gateway's create body has a typed form as well as the opaque one, so the
 	// plain name is taken and needs no opt-in.
 	require.Contains(t, names, "gateway")
 	require.Empty(t, names["gateway"])
 
+	// client_template took its plain name once its on-premise detection probes
+	// were exposed in typed form, so it needs no opt-in either.
+	require.Contains(t, names, "client_template")
+	require.Empty(t, names["client_template"])
+
 	// The rest have no typed form yet, so their plain names stay free.
 	require.NotContains(t, names, "policy")
 	require.NotContains(t, names, "gateway_template")
-	require.NotContains(t, names, "client_template")
 }
 
 // TestTagKindsAreSeparateResources covers the endpoint that serves four kinds of

@@ -42,7 +42,6 @@ data "netskopebwan_ca_certificates" "example" {
 
 Read-Only:
 
-- `client_auth_enabled` (Boolean)
 - `created_at` (String)
 - `created_by` (Attributes) (see [below for nested schema](#nestedatt--data--created_by))
 - `disabled` (Boolean)
