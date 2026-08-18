@@ -39,7 +39,6 @@ resource "netskopebwan_segment" "example" {
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
 - `network_id` (Number)
-- `tenant_id` (String)
 
 <a id="nestedatt--created_by"></a>
 ### Nested Schema for `created_by`

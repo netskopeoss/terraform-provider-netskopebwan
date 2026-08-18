@@ -35,7 +35,6 @@ resource "netskopebwan_gateway" "example" {
 - `created_at` (String)
 - `created_by` (Attributes) (see [below for nested schema](#nestedatt--created_by))
 - `id` (String) Gateway ID
-- `is_activated` (Boolean)
 - `labels` (List of String)
 - `managed` (Boolean)
 - `modified_at` (String)

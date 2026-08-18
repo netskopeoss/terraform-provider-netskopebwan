@@ -44,7 +44,6 @@ resource "netskopebwan_tag_gateway" "example" {
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
 - `system` (Boolean)
-- `tenant_id` (String)
 
 <a id="nestedatt--config"></a>
 ### Nested Schema for `config`

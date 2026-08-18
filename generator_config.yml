@@ -42,13 +42,25 @@
 # managed object. The v2 API has no separate site object — a gateway is the
 # site-level object — so netskopebwan_gateway_raw is what manages a site.
 
+# A custom app's definitions moved to a v2 shape without a rename on the wire, so
+# both fields are still in the schema. The v1 shape is dropped here, ahead of the
+# rename below, so `definitions_v2` can take the plain `definitions` name instead
+# of sitting next to it.
+x_terraform_drops:
+  - definitions
+
 # Terraform reserves a handful of attribute names at the root of a resource, and a
 # schema declaring one is rejected outright — taking the whole provider down with
 # it, not just that resource. A cloud account genuinely has a field called
 # `provider` and the API requires it on create, so it cannot be dropped either:
 # it is exposed under another name and the runtime translates on the wire.
+#
+# `definitions_v2` moving onto the `definitions` name (see `x_terraform_drops`
+# above) is the same mechanism used for a different reason: freeing up a name
+# rather than avoiding a reserved one.
 x_terraform_renames:
   provider: cloud_provider
+  definitions_v2: definitions
 
 provider:
   name: netskopebwan
@@ -67,6 +79,8 @@ resources:
     delete:
       path: /address-groups/{id}
       method: DELETE
+    schema:
+      ignores: [latest_member_modified_at]
 
   # The API exposes no GET on a single address object, so the resource is
   # refreshed from its group's collection.
@@ -99,6 +113,8 @@ resources:
     delete:
       path: /ca-certificates/{id}
       method: DELETE
+    schema:
+      ignores: [client_auth_enabled]
 
   # A client's device configuration is deliberately not exposed. Note that the
   # spec marks device_config_raw required on POST /clients, so creating a client
@@ -120,13 +136,7 @@ resources:
     schema:
       ignores: [device_config_raw]
 
-  # A client template's on-premise detection probes accept either an object or the
-  # string it is shorthand for. Only the object form is exposed, so a configuration
-  # written against the shorthand cannot be expressed here yet: that is what the
-  # opt-in is for, and why the plain `client_template` name is still free.
-  client_template_raw:
-    x_terraform:
-      raw_feature: client_template
+  client_template:
     create:
       path: /client-templates
       method: POST
@@ -167,6 +177,8 @@ resources:
     delete:
       path: /controllers/{id}
       method: DELETE
+    schema:
+      ignores: [overlay_auth]
 
   controller_operator:
     create:
@@ -209,6 +221,8 @@ resources:
     delete:
       path: /device-groups/{id}
       method: DELETE
+    schema:
+      ignores: [latest_member_modified_at]
 
   gateway_group:
     create:
@@ -246,7 +260,7 @@ resources:
     schema:
       # The read and update models carry the opaque document whatever the object
       # was created from; leaving it out is what makes this the typed gateway.
-      ignores: [device_config_raw]
+      ignores: [device_config_raw, is_activated]
 
   gateway_raw:
     x_terraform:
@@ -338,6 +352,8 @@ resources:
     delete:
       path: /segments/{id}
       method: DELETE
+    schema:
+      ignores: [tenant_id]
 
   # The API tells four kinds of tag apart by a `config.type` discriminator, and
   # each kind has fields the others do not: a wanlink tag has a probe frequency,
@@ -359,6 +375,8 @@ resources:
     delete:
       path: /overlay-tags/{id}
       method: DELETE
+    schema:
+      ignores: [tenant_id]
 
   tag_overlay:
     x_terraform:
@@ -375,6 +393,8 @@ resources:
     delete:
       path: /overlay-tags/{id}
       method: DELETE
+    schema:
+      ignores: [tenant_id]
 
   tag_topology:
     x_terraform:
@@ -391,6 +411,8 @@ resources:
     delete:
       path: /overlay-tags/{id}
       method: DELETE
+    schema:
+      ignores: [tenant_id]
 
   tag_gateway:
     x_terraform:
@@ -407,6 +429,8 @@ resources:
     delete:
       path: /overlay-tags/{id}
       method: DELETE
+    schema:
+      ignores: [tenant_id]
 
   tenant:
     create:
@@ -437,6 +461,8 @@ resources:
     delete:
       path: /users/{id}
       method: DELETE
+    schema:
+      ignores: [raw_role]
 
   user_group:
     create:
@@ -471,10 +497,14 @@ data_sources:
     read:
       path: /address-groups/{id}
       method: GET
+    schema:
+      ignores: [latest_member_modified_at]
   address_groups:
     read:
       path: /address-groups
       method: GET
+    schema:
+      ignores: [data.latest_member_modified_at]
 
   address_objects:
     read:
@@ -495,10 +525,14 @@ data_sources:
     read:
       path: /ca-certificates/{id}
       method: GET
+    schema:
+      ignores: [client_auth_enabled]
   ca_certificates:
     read:
       path: /ca-certificates
       method: GET
+    schema:
+      ignores: [data.client_auth_enabled]
 
   client:
     read:
@@ -513,15 +547,11 @@ data_sources:
     schema:
       ignores: [data.device_config_raw]
 
-  client_template_raw:
-    x_terraform:
-      raw_feature: client_template
+  client_template:
     read:
       path: /client-templates/{id}
       method: GET
-  client_templates_raw:
-    x_terraform:
-      raw_feature: client_template
+  client_templates:
     read:
       path: /client-templates
       method: GET
@@ -566,10 +596,14 @@ data_sources:
     read:
       path: /device-groups/{id}
       method: GET
+    schema:
+      ignores: [latest_member_modified_at]
   device_groups:
     read:
       path: /device-groups
       method: GET
+    schema:
+      ignores: [data.latest_member_modified_at]
 
   gateway_group:
     read:
@@ -587,7 +621,7 @@ data_sources:
       path: /gateways/{id}
       method: GET
     schema:
-      ignores: [device_config_raw]
+      ignores: [device_config_raw, is_activated]
   gateways:
     x_terraform:
       variant: model_name
@@ -595,7 +629,7 @@ data_sources:
       path: /gateways
       method: GET
     schema:
-      ignores: [data.device_config_raw]
+      ignores: [data.device_config_raw, data.is_activated]
 
   gateway_raw:
     x_terraform:
@@ -670,10 +704,14 @@ data_sources:
     read:
       path: /segments/{id}
       method: GET
+    schema:
+      ignores: [tenant_id]
   segments:
     read:
       path: /segments
       method: GET
+    schema:
+      ignores: [data.tenant_id]
 
   software_downloads:
     read:
@@ -691,12 +729,16 @@ data_sources:
     read:
       path: /overlay-tags/{id}
       method: GET
+    schema:
+      ignores: [tenant_id]
   tags_wanlink:
     x_terraform:
       variant: wanlink
     read:
       path: /overlay-tags
       method: GET
+    schema:
+      ignores: [data.tenant_id]
 
   tag_overlay:
     x_terraform:
@@ -704,12 +746,16 @@ data_sources:
     read:
       path: /overlay-tags/{id}
       method: GET
+    schema:
+      ignores: [tenant_id]
   tags_overlay:
     x_terraform:
       variant: overlay
     read:
       path: /overlay-tags
       method: GET
+    schema:
+      ignores: [data.tenant_id]
 
   tag_topology:
     x_terraform:
@@ -717,12 +763,16 @@ data_sources:
     read:
       path: /overlay-tags/{id}
       method: GET
+    schema:
+      ignores: [tenant_id]
   tags_topology:
     x_terraform:
       variant: topology
     read:
       path: /overlay-tags
       method: GET
+    schema:
+      ignores: [data.tenant_id]
 
   tag_gateway:
     x_terraform:
@@ -730,12 +780,16 @@ data_sources:
     read:
       path: /overlay-tags/{id}
       method: GET
+    schema:
+      ignores: [tenant_id]
   tags_gateway:
     x_terraform:
       variant: gateway
     read:
       path: /overlay-tags
       method: GET
+    schema:
+      ignores: [data.tenant_id]
 
   tenant:
     read:
@@ -754,10 +808,14 @@ data_sources:
     read:
       path: /users/{id}
       method: GET
+    schema:
+      ignores: [raw_role]
   users:
     read:
       path: /users
       method: GET
+    schema:
+      ignores: [data.raw_role]
 
   user_group:
     read:

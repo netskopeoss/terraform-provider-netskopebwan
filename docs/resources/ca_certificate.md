@@ -31,7 +31,6 @@ resource "netskopebwan_ca_certificate" "example" {
 
 ### Optional
 
-- `client_auth_enabled` (Boolean)
 - `disabled` (Boolean)
 
 ### Read-Only

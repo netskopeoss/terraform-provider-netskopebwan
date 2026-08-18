@@ -52,7 +52,6 @@ Read-Only:
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--data--modified_by))
 - `name` (String)
 - `system` (Boolean)
-- `tenant_id` (String)
 
 <a id="nestedatt--data--config"></a>
 ### Nested Schema for `data.config`

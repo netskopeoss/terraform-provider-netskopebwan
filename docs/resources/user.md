@@ -47,7 +47,6 @@ resource "netskopebwan_user" "example" {
 - `id` (String) User ID
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
-- `raw_role` (String) The internal representation of the user's role, we are migrating from raw_role to role as we transition to a more structured role system.
 
 <a id="nestedatt--created_by"></a>
 ### Nested Schema for `created_by`

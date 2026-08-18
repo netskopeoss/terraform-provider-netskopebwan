@@ -46,7 +46,6 @@ Read-Only:
 - `created_at` (String)
 - `created_by` (Attributes) (see [below for nested schema](#nestedatt--data--created_by))
 - `id` (String)
-- `is_activated` (Boolean)
 - `labels` (List of String)
 - `managed` (Boolean)
 - `modified_at` (String)

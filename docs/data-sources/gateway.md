@@ -39,7 +39,6 @@ data "netskopebwan_gateway" "by_filter" {
 - `config_updates_enabled` (Boolean)
 - `created_at` (String)
 - `created_by` (Attributes) (see [below for nested schema](#nestedatt--created_by))
-- `is_activated` (Boolean)
 - `labels` (List of String)
 - `managed` (Boolean)
 - `modified_at` (String)

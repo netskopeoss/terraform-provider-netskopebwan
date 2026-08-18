@@ -299,6 +299,52 @@ paths:
 	require.Equal(t, []string{"group_id", "id", "sort-by"}, names)
 }
 
+func TestPrepDropClearsTheWayForARename(t *testing.T) {
+	doc := parse(t, `
+components:
+  schemas:
+    CustomApp:
+      type: object
+      required: [name]
+      properties:
+        name: {type: string}
+        definitions: {type: array, items: {type: string}}
+        definitions_v2: {type: array, items: {type: string}}
+`)
+
+	prep := NewPrep(doc)
+	prep.Drop("definitions")
+	prep.Rename("definitions_v2", "definitions")
+	prep.Run()
+
+	require.Empty(t, prep.Warnings)
+
+	customApp := schema(t, doc, "CustomApp")
+	properties, _ := customApp["properties"].(map[string]any)
+
+	require.ElementsMatch(t, []string{"name", "definitions"}, slices.Sorted(maps.Keys(properties)))
+}
+
+func TestPrepDropRemovesTheFieldFromRequired(t *testing.T) {
+	doc := parse(t, `
+components:
+  schemas:
+    Thing:
+      type: object
+      required: [name, legacy]
+      properties:
+        name: {type: string}
+        legacy: {type: string}
+`)
+
+	prep := NewPrep(doc)
+	prep.Drop("legacy")
+	prep.Run()
+
+	thing := schema(t, doc, "Thing")
+	require.Equal(t, []string{"name"}, stringList(thing["required"]))
+}
+
 func TestPrepReportsAllOf(t *testing.T) {
 	_, warnings := runPrepOn(t, `
 components:

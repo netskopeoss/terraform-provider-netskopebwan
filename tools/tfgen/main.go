@@ -74,6 +74,15 @@ func runPrep(args []string) error {
 			}
 		}
 
+		drops, err := readDrops(*config)
+		if err != nil {
+			return err
+		}
+
+		for _, name := range drops {
+			prep.Drop(name)
+		}
+
 		renames, err := readRenames(*config)
 		if err != nil {
 			return err

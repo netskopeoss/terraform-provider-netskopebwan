@@ -16,6 +16,10 @@ const (
 	// renamesKey holds the document-wide field renames, at the top level of the
 	// file rather than on an object, because the fields they name are shared.
 	renamesKey = "x_terraform_renames"
+	// dropsKey holds the document-wide field removals that have to run before
+	// renames, for the same reason renames live at the top level: the field
+	// being dropped is shared with whatever schema is taking its name over.
+	dropsKey = "x_terraform_drops"
 )
 
 // readRenames reads the fields whose Terraform name has to differ from the name
@@ -27,6 +31,10 @@ const (
 // does have a field called `provider`, and the API requires it on create, so
 // dropping it is not an option either: the only way to expose the field is under
 // another name, with the runtime translating.
+//
+// The same map also carries a field superseded by a differently-named
+// replacement — `definitions_v2` taking over `definitions`, say — once
+// `x_terraform_drops` has cleared the old name out of the way.
 func readRenames(path string) (map[string]string, error) {
 	doc, err := readYAML(path)
 	if err != nil {
@@ -39,6 +47,28 @@ func readRenames(path string) (map[string]string, error) {
 	for from, to := range raw {
 		if name := stringOr(to); name != "" {
 			out[from] = name
+		}
+	}
+
+	return out, nil
+}
+
+// readDrops reads the fields removed from every schema before renames run. A
+// field superseded by a differently-named replacement is dropped so the
+// replacement can be renamed onto the vacated name without the collision guard
+// in renameReservedProperties refusing the move.
+func readDrops(path string) ([]string, error) {
+	doc, err := readYAML(path)
+	if err != nil {
+		return nil, err
+	}
+
+	raw, _ := doc[dropsKey].([]any)
+	out := make([]string, 0, len(raw))
+
+	for _, entry := range raw {
+		if name := stringOr(entry); name != "" {
+			out = append(out, name)
 		}
 	}
 
@@ -121,6 +151,7 @@ func writeGeneratorConfig(configPath, outPath string) error {
 	}
 
 	delete(doc, renamesKey)
+	delete(doc, dropsKey)
 
 	for _, kind := range []string{"resources", "data_sources"} {
 		objects, _ := doc[kind].(map[string]any)
