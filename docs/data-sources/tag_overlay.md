@@ -36,7 +36,6 @@ data "netskopebwan_tag_overlay" "by_filter" {
 
 ### Read-Only
 
-- `config` (Attributes) (see [below for nested schema](#nestedatt--config))
 - `created_at` (String)
 - `created_by` (Attributes) (see [below for nested schema](#nestedatt--created_by))
 - `description` (String)
@@ -44,17 +43,9 @@ data "netskopebwan_tag_overlay" "by_filter" {
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
 - `name` (String)
-- `system` (Boolean)
-
-<a id="nestedatt--config"></a>
-### Nested Schema for `config`
-
-Read-Only:
-
 - `overlay_private` (Boolean)
 - `overlay_reachable` (Boolean)
-- `type` (String) Must be one of: `overlay`.
-
+- `system` (Boolean)
 
 <a id="nestedatt--created_by"></a>
 ### Nested Schema for `created_by`

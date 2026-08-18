@@ -115,6 +115,8 @@ type variantMeta struct {
 	Discriminator string   `yaml:"discriminator"`
 	Value         string   `yaml:"value"`
 	Match         []string `yaml:"match"`
+	Wrapper       string   `yaml:"wrapper"`
+	Wrapped       []string `yaml:"wrapped"`
 }
 
 // readVariantMetadata collects what prep recorded on each synthetic path.
@@ -152,6 +154,8 @@ func readVariantMetadata(path string) (map[string]*variantMeta, error) {
 			Discriminator: stringOr(raw["discriminator"]),
 			Value:         stringOr(raw["value"]),
 			Match:         anyStrings(raw["match"]),
+			Wrapper:       stringOr(raw["wrapper"]),
+			Wrapped:       anyStrings(raw["wrapped"]),
 		}
 	}
 
@@ -171,8 +175,8 @@ func renderVariant(readPath, variant string, metadata map[string]*variantMeta) s
 	}
 
 	return fmt.Sprintf(
-		"&genresource.Variant{Name: %q, Discriminator: %q, Value: %q, Match: %s}",
-		meta.Name, meta.Discriminator, meta.Value, renderStrings(meta.Match))
+		"&genresource.Variant{Name: %q, Discriminator: %q, Value: %q, Match: %s, Wrapper: %q, Wrapped: %s}",
+		meta.Name, meta.Discriminator, meta.Value, renderStrings(meta.Match), meta.Wrapper, renderStrings(meta.Wrapped))
 }
 
 // searchablePaths holds the collection endpoints that can be filtered, so a data

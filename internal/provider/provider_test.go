@@ -419,6 +419,15 @@ func TestTagKindsAreSeparateResources(t *testing.T) {
 	for _, definition := range registry.Resources() {
 		if definition.Variant != nil && strings.HasPrefix(definition.Name, "tag_") {
 			require.Equal(t, "config.type", definition.Variant.Discriminator, definition.Name)
+
+			// And nowhere in the schema, because the resource name has already said
+			// it: the config the API wraps a tag's fields in is hoisted away, and the
+			// runtime is what puts it back.
+			require.Equal(t, "config", definition.Variant.Wrapper, definition.Name)
+
+			attributes := definition.Schema(context.Background()).Attributes
+			require.NotContains(t, attributes, "config", definition.Name)
+			require.NotContains(t, attributes, "type", definition.Name)
 		}
 	}
 

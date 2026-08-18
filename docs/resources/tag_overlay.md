@@ -16,9 +16,6 @@ description: |-
 # Generated from the provider's schema: the arguments this object requires, with
 # placeholders to fill in. Remove these two lines to maintain the example by hand.
 resource "netskopebwan_tag_overlay" "example" {
-  config = {
-    type = "overlay"
-  }
   name = "example"
 }
 ```
@@ -28,13 +25,14 @@ resource "netskopebwan_tag_overlay" "example" {
 
 ### Required
 
-- `config` (Attributes) (see [below for nested schema](#nestedatt--config))
 - `name` (String)
 
 ### Optional
 
 - `description` (String)
 - `enabled` (Boolean)
+- `overlay_private` (Boolean)
+- `overlay_reachable` (Boolean)
 
 ### Read-Only
 
@@ -44,19 +42,6 @@ resource "netskopebwan_tag_overlay" "example" {
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
 - `system` (Boolean)
-
-<a id="nestedatt--config"></a>
-### Nested Schema for `config`
-
-Required:
-
-- `type` (String) Must be one of: `overlay`.
-
-Optional:
-
-- `overlay_private` (Boolean)
-- `overlay_reachable` (Boolean)
-
 
 <a id="nestedatt--created_by"></a>
 ### Nested Schema for `created_by`

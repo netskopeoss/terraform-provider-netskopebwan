@@ -368,6 +368,11 @@ func (r *genericResource) write(ctx context.Context, op Operation, value tftypes
 		return nil, false, diags
 	}
 
+	// The schema has neither the field the API nests this kind under nor the
+	// discriminator inside it, because the resource type says which kind this is.
+	// Both go back on the way out.
+	body = r.def.Variant.Nest(body)
+
 	client, clientDiags := r.meta.clientFor(value)
 	diags.Append(clientDiags...)
 
@@ -446,7 +451,10 @@ func (r *genericResource) read(ctx context.Context, value tftypes.Value) (any, b
 func (r *genericResource) apply(mode tfschema.Mode, document any, current tftypes.Value) (tftypes.Value, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
-	value, err := r.model.Apply(mode, document, current)
+	// Every document reaching here is one object as the API shaped it — a create or
+	// update response, a single-object read, or an element found in a collection —
+	// and every one of them is reshaped before the schema is asked about it.
+	value, err := r.model.Apply(mode, r.def.Variant.Flatten(document), current)
 	if err != nil {
 		diags.AddError(
 			"Unexpected API response",
