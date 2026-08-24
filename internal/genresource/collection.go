@@ -10,17 +10,20 @@ import (
 )
 
 // Field names of the paginated collection envelope every list endpoint returns.
+// Only two of them reach Terraform: a list data source holds the elements and the
+// count, while the cursor and the flag belong to the walk that collected them.
 const (
-	dataField      = "data"
-	pageInfoField  = "page_info"
-	endCursorField = "end_cursor"
-	hasNextField   = "has_next"
+	dataField       = "data"
+	totalCountField = "total_count"
+	pageInfoField   = "page_info"
+	endCursorField  = "end_cursor"
+	hasNextField    = "has_next"
 )
 
-// Query parameters shared by every list endpoint.
+// Query parameters shared by every list endpoint. Only the cursor is named here:
+// the page size is never sent, because a collection is always read in full.
 const (
 	afterParam = "after"
-	firstParam = "first"
 	// filterAttribute is both the query parameter the API filters a collection
 	// with and the attribute a data source exposes it as.
 	filterAttribute = "filter"
@@ -57,13 +60,21 @@ type collection struct {
 	PageInfo map[string]any
 }
 
-// Document rebuilds the envelope so it can be decoded against a data source
-// schema.
+// Document renders the collection as the document a list data source is decoded
+// from: the elements walked, and the count the API reports for them.
+//
+// The count is the API's own, taken out of the pagination envelope rather than
+// measured here, so it says what the collection holds rather than what this walk
+// happened to see. Where the API did not report one — an endpoint that answers
+// without a pagination envelope at all — the elements read are the only count
+// there is.
 func (c collection) Document() map[string]any {
 	document := map[string]any{dataField: c.Data}
 
-	if c.PageInfo != nil {
-		document[pageInfoField] = c.PageInfo
+	if total, ok := c.PageInfo[totalCountField]; ok {
+		document[totalCountField] = total
+	} else {
+		document[totalCountField] = int64(len(c.Data))
 	}
 
 	return document
@@ -131,10 +142,10 @@ func fetchAll(ctx context.Context, client bwanclient.API, path string, query url
 }
 
 // findByID walks a collection looking for the element carrying id, which is how
-// an object the API exposes no single-object GET for is refreshed. An element of
+// an object the API exposes no single-object GET for is read. An element of
 // another kind is skipped: one endpoint can serve several.
-func findByID(ctx context.Context, client bwanclient.API, path, id string, variant *Variant) (map[string]any, bool, error) {
-	all, err := fetchAll(ctx, client, path, nil)
+func findByID(ctx context.Context, client bwanclient.API, path, id string, variant *Variant, query url.Values) (map[string]any, bool, error) {
+	all, err := fetchAll(ctx, client, path, query)
 	if err != nil {
 		return nil, false, err
 	}

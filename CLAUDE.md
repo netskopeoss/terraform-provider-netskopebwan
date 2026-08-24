@@ -62,6 +62,28 @@ update forces replacement; a path placeholder other than `{id}` becomes a
 required attribute that forces replacement; a data source gains `filter` where
 the collection is filterable.
 
+Two of those are about collections, and both are `tfgen prep` rewriting the spec
+rather than runtime behaviour to be found in the schema:
+
+- **A list data source takes `filter` and `sort`, and answers with `data` and
+  `total_count`.** `prep` drops the `first`/`after` parameters and lifts
+  `total_count` out of `page_info`, because the runtime walks every page: a
+  cursor argument could only ask for a slice of a list already read in full, and
+  `end_cursor`/`has_next` describe a walk that is over before state is written.
+  The count is the API's own, plucked out of the last page's envelope.
+- **A data source can stand for one element of the collection it reads.**
+  `x_terraform.element: true` on a data source whose read is a collection says
+  so, which is what gives `app_category`, `audit_record` and the rest a data
+  source at all — the API serves no single-object read for any of them. `prep`
+  lifts the collection's element schema onto a path of its own for the generator
+  to map (`/app-categories@element`, the same trick and separator as a variant's
+  path), and the runtime finds the object by walking the collection, the way a
+  resource without a single-object read is refreshed. Every path in
+  `generator_config.yml` stays a path the API serves; the entry says what the
+  provider makes of it. `tfgen registry` refuses a claim on a read that already
+  addresses one object, and prep warns when the claimed collection is missing,
+  does not list, or has elements with no `id` to address one by.
+
 Two things the runtime cannot derive, and which have rules:
 
 - **Variants.** One endpoint serving several kinds of object becomes several

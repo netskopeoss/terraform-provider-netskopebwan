@@ -117,6 +117,20 @@ func decorateDataSource(ctx context.Context, def DataSourceDefinition) dschema.S
 	attributes[OperatingTenantAttribute] = operatingTenantDataSourceAttribute()
 
 	if !def.Search.Supported() {
+		// An object the API only ever lists is found by walking its collection, so
+		// its id is something the configuration gives rather than something the read
+		// path carries. The generated schema has it as a field of the object, which
+		// is nothing a practitioner could ask by.
+		if attributes[dataField] == nil && readsWholeCollection(def.Read.Path) {
+			const text = "Identifier of the object to read."
+
+			attributes[idAttribute] = dschema.StringAttribute{
+				Required:            true,
+				Description:         text,
+				MarkdownDescription: text,
+			}
+		}
+
 		schema.Attributes = attributes
 
 		return schema

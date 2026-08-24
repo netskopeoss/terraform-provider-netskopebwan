@@ -64,7 +64,14 @@ second place to keep in step:
 - a configurable attribute that is not part of the path is a request-body field
   for a resource and a query parameter for a data source;
 - a data source addressing one object gains a `filter` argument when the API lets
-  the collection that object belongs to be filtered.
+  the collection that object belongs to be filtered;
+- a data source reading a collection takes `filter` and `sort` and nothing else,
+  and answers with `data` and `total_count`;
+- a data source reading a collection and declaring `x_terraform.element: true`
+  stands for one object out of it rather than the list: its schema comes from the
+  collection's elements and the object is found by walking the collection, which
+  is the only way an object the API never serves on its own gets a data source of
+  its own.
 
 ## Objects the API describes as several shapes
 
@@ -228,8 +235,16 @@ provider "netskopebwan" {
 endpoint is the API base URL without the version prefix; the provider appends
 `/v2`. See [`examples/`](examples).
 
-A list data source walks every page by default, so `data` holds the whole
-collection. Setting `first` or `after` asks for exactly one page instead.
+A list data source reads the whole collection: every page is walked, so `data`
+holds the list and `total_count` is what the API reports for it. `filter` narrows
+the list and `sort` orders it, and those are the only arguments there are — a page
+of a list that has already been read in full is not worth asking for.
+
+```hcl
+data "netskopebwan_segments" "corporate" {
+  filter = "name eq \"corporate\""
+}
+```
 
 A data source addressing a single object takes either its `id` or a `filter` in
 the API's filter syntax — exactly one of the two:
@@ -247,6 +262,11 @@ data "netskopebwan_segment" "by_name" {
 A filter has to match exactly one object; matching none or several is an error
 rather than a silent pick, so a configuration never depends on the order the API
 returns things in.
+
+Not every object has an endpoint that serves one of it — an app category, an audit
+event and the software catalogue are only ever listed. Those data sources exist
+anyway and are used the same way; the provider finds the object by walking the
+collection, so an id that is not in it is an error rather than empty state.
 
 ## Objects the provider does not model in full
 

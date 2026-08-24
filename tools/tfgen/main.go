@@ -91,6 +91,15 @@ func runPrep(args []string) error {
 		for from, to := range renames {
 			prep.Rename(from, to)
 		}
+
+		elements, err := readElementClaims(*config)
+		if err != nil {
+			return err
+		}
+
+		for _, collection := range elements {
+			prep.ClaimElement(collection)
+		}
 	}
 
 	prep.Run()

@@ -438,7 +438,7 @@ func (r *genericResource) read(ctx context.Context, value tftypes.Value) (any, b
 		return nil, false, diags
 	}
 
-	element, found, err := findByID(ctx, client, requestPath, identity[idAttribute], r.def.Variant)
+	element, found, err := findByID(ctx, client, requestPath, identity[idAttribute], r.def.Variant, nil)
 	if err != nil {
 		diags.AddError("Could not read "+r.def.Name, err.Error())
 

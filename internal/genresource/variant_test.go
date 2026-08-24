@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -207,32 +206,11 @@ func TestListDataSourceDropsTheOtherKinds(t *testing.T) {
 	def := DataSourceDefinition{
 		Name: "tags_wanlink",
 		Schema: func(_ context.Context) dschema.Schema {
-			return dschema.Schema{
-				Attributes: map[string]dschema.Attribute{
-					"after":  dschema.StringAttribute{Optional: true, Computed: true},
-					"first":  dschema.Int64Attribute{Optional: true, Computed: true},
-					"filter": dschema.StringAttribute{Optional: true, Computed: true},
-					"sort":   dschema.ListAttribute{Optional: true, Computed: true, ElementType: types.StringType},
-					"data": dschema.ListNestedAttribute{
-						Computed: true,
-						NestedObject: dschema.NestedAttributeObject{
-							Attributes: map[string]dschema.Attribute{
-								"id":   dschema.StringAttribute{Computed: true},
-								"name": dschema.StringAttribute{Computed: true},
-								"type": dschema.StringAttribute{Computed: true},
-							},
-						},
-					},
-					"page_info": dschema.SingleNestedAttribute{
-						Computed: true,
-						Attributes: map[string]dschema.Attribute{
-							"end_cursor":  dschema.StringAttribute{Computed: true},
-							"has_next":    dschema.BoolAttribute{Computed: true},
-							"total_count": dschema.Int64Attribute{Computed: true},
-						},
-					},
-				},
-			}
+			return listSchema(map[string]dschema.Attribute{
+				"id":   dschema.StringAttribute{Computed: true},
+				"name": dschema.StringAttribute{Computed: true},
+				"type": dschema.StringAttribute{Computed: true},
+			})
 		},
 		Read:    Operation{Method: http.MethodGet, Path: "/tags"},
 		Variant: &Variant{Name: "wanlink", Discriminator: "type", Value: "wanlink"},
@@ -368,32 +346,11 @@ func TestHoistedFieldsComeBackFlatFromACollection(t *testing.T) {
 	def := DataSourceDefinition{
 		Name: "tags_wanlink",
 		Schema: func(_ context.Context) dschema.Schema {
-			return dschema.Schema{
-				Attributes: map[string]dschema.Attribute{
-					"after":  dschema.StringAttribute{Optional: true, Computed: true},
-					"first":  dschema.Int64Attribute{Optional: true, Computed: true},
-					"filter": dschema.StringAttribute{Optional: true, Computed: true},
-					"sort":   dschema.ListAttribute{Optional: true, Computed: true, ElementType: types.StringType},
-					"data": dschema.ListNestedAttribute{
-						Computed: true,
-						NestedObject: dschema.NestedAttributeObject{
-							Attributes: map[string]dschema.Attribute{
-								"id":                 dschema.StringAttribute{Computed: true},
-								"name":               dschema.StringAttribute{Computed: true},
-								"wan_link_frequency": dschema.Int64Attribute{Computed: true},
-							},
-						},
-					},
-					"page_info": dschema.SingleNestedAttribute{
-						Computed: true,
-						Attributes: map[string]dschema.Attribute{
-							"end_cursor":  dschema.StringAttribute{Computed: true},
-							"has_next":    dschema.BoolAttribute{Computed: true},
-							"total_count": dschema.Int64Attribute{Computed: true},
-						},
-					},
-				},
-			}
+			return listSchema(map[string]dschema.Attribute{
+				"id":                 dschema.StringAttribute{Computed: true},
+				"name":               dschema.StringAttribute{Computed: true},
+				"wan_link_frequency": dschema.Int64Attribute{Computed: true},
+			})
 		},
 		Read: Operation{Method: http.MethodGet, Path: "/overlay-tags"},
 		Variant: &Variant{

@@ -14,7 +14,17 @@
 #     listing its collection and matching on "id";
 #   - a resource with no update operation forces replacement on any change;
 #   - placeholders other than "{id}" become required attributes that force
-#     replacement, because they identify the parent the object lives under.
+#     replacement, because they identify the parent the object lives under;
+#   - a data source reading a collection takes `filter` and `sort` and nothing
+#     else, and answers with `data` and `total_count`: every page is walked, so
+#     there is no page left to ask for;
+#   - a data source reading a collection and declaring
+#     `x_terraform.element: true` is one object out of that collection rather
+#     than the list of it. Its schema comes from the collection's elements and
+#     the runtime finds the object by walking the collection, matching on "id" —
+#     which is how an object the API only ever lists (an app category, an audit
+#     event) gets a data source of its own. Every path in this file is one the
+#     API serves; the entry says what the provider makes of it.
 #
 # `x_terraform` blocks carry the little that cannot be derived. The HashiCorp
 # generator ignores them; `tfgen registry` reads them.
@@ -97,8 +107,11 @@ resources:
     delete:
       path: /address-groups/{group_id}/address-objects/{id}
       method: DELETE
+    # The API has no single-object read for an address object, so the read above is
+    # the collection: what the generator would otherwise merge into the resource is
+    # the list envelope rather than the object.
     schema:
-      ignores: [after, first, sort, filter, page_info, data]
+      ignores: [sort, filter, total_count, data]
 
   ca_certificate:
     create:
@@ -506,16 +519,34 @@ data_sources:
     schema:
       ignores: [data.latest_member_modified_at]
 
+  address_object:
+    x_terraform:
+      element: true
+    read:
+      path: /address-groups/{group_id}/address-objects
+      method: GET
   address_objects:
     read:
       path: /address-groups/{group_id}/address-objects
       method: GET
 
+  app_category:
+    x_terraform:
+      element: true
+    read:
+      path: /app-categories
+      method: GET
   app_categories:
     read:
       path: /app-categories
       method: GET
 
+  audit_record:
+    x_terraform:
+      element: true
+    read:
+      path: /auditevents
+      method: GET
   audit_records:
     read:
       path: /auditevents
@@ -659,6 +690,12 @@ data_sources:
       path: /gateway-templates
       method: GET
 
+  inventory_device:
+    x_terraform:
+      element: true
+    read:
+      path: /inventory-devices
+      method: GET
   inventory_devices:
     read:
       path: /inventory-devices
@@ -686,6 +723,12 @@ data_sources:
       path: /policies
       method: GET
 
+  qosmos_app:
+    x_terraform:
+      element: true
+    read:
+      path: /qosmos-apps
+      method: GET
   qosmos_apps:
     read:
       path: /qosmos-apps
@@ -713,11 +756,23 @@ data_sources:
     schema:
       ignores: [data.tenant_id]
 
+  software_download:
+    x_terraform:
+      element: true
+    read:
+      path: /software-downloads
+      method: GET
   software_downloads:
     read:
       path: /software-downloads
       method: GET
 
+  software_version:
+    x_terraform:
+      element: true
+    read:
+      path: /software-versions
+      method: GET
   software_versions:
     read:
       path: /software-versions
@@ -835,6 +890,12 @@ data_sources:
       path: /vpnpeers
       method: GET
 
+  webroot_category:
+    x_terraform:
+      element: true
+    read:
+      path: /webroot-categories
+      method: GET
   webroot_categories:
     read:
       path: /webroot-categories

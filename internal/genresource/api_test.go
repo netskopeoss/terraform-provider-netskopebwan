@@ -149,9 +149,17 @@ func apiError(status int, message string) error {
 	return &bwanclient.APIError{StatusCode: status, Message: message}
 }
 
-// page renders one page of a collection. The envelope is the same for every list
-// endpoint, so spelling it out in each test would bury what the test is about.
+// page renders one page of a collection holding everything the API has to offer.
+// The envelope is the same for every list endpoint, so spelling it out in each
+// test would bury what the test is about.
 func page(cursor string, hasNext bool, elements ...map[string]any) json.RawMessage {
+	return pageOf(cursor, hasNext, len(elements), elements...)
+}
+
+// pageOf renders one page of a collection of total objects, for a test that spans
+// several pages: the count the API reports is the whole collection's, not the
+// page's.
+func pageOf(cursor string, hasNext bool, total int, elements ...map[string]any) json.RawMessage {
 	items := make([]any, 0, len(elements))
 
 	for _, element := range elements {
@@ -161,9 +169,9 @@ func page(cursor string, hasNext bool, elements ...map[string]any) json.RawMessa
 	encoded, err := json.Marshal(map[string]any{
 		dataField: items,
 		pageInfoField: map[string]any{
-			endCursorField: cursor,
-			hasNextField:   hasNext,
-			"total_count":  len(elements),
+			endCursorField:  cursor,
+			hasNextField:    hasNext,
+			totalCountField: total,
 		},
 	})
 	if err != nil {

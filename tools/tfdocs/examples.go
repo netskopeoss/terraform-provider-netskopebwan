@@ -445,44 +445,60 @@ func dataSourceExample(ctx context.Context, typeName string, definition genresou
 			genresource.RawOptInArgument(definition.RawFeature))
 	}
 
-	required := requiredArguments(ctx, attributes, "", definition.RawJSONAttributes, definition.VariantBlocks)
-
 	_, byID := attributes[idAttribute]
 	_, byFilter := attributes[filterAttribute]
 
 	switch {
-	case required != "":
-		// Something has to be given — the id of the object or of its parent — so
-		// there is only one way to write this.
-		fmt.Fprintf(&out, "data %q %q {\n", typeName, exampleLabel)
-		out.WriteString(indent(required, "  "))
-		out.WriteString("}\n")
-
 	case byID && byFilter:
+		// Both ways of picking the object are shown, and both blocks are rendered
+		// from the whole attribute set: an object living under another still needs
+		// the parent's id whichever way it is picked.
 		out.WriteString("# A single object is addressed either by its id...\n")
-		fmt.Fprintf(&out, "data %q \"by_id\" {\n  id = %q\n}\n\n", typeName, idExample)
-		out.WriteString("# ...or by a filter, which has to match exactly one object.\n")
-		fmt.Fprintf(&out, "data %q \"by_filter\" {\n  filter = \"%s\"\n}\n", typeName, filterExample)
-
-	case byID:
-		fmt.Fprintf(&out, "data %q %q {\n  id = %q\n}\n", typeName, exampleLabel, idExample)
+		out.WriteString(dataBlock(ctx, typeName, "by_id", definition, force(attributes, idAttribute)))
+		out.WriteString("\n# ...or by a filter, which has to match exactly one object.\n")
+		out.WriteString(dataBlock(ctx, typeName, "by_filter", definition, force(attributes, filterAttribute)))
 
 	case byFilter:
-		out.WriteString("# Every page is walked, so data holds the whole collection. A filter narrows\n" +
-			"# it; first or after ask for one page instead.\n")
-		fmt.Fprintf(&out, "data %q %q {\n  filter = \"%s\"\n}\n", typeName, exampleLabel, filterExample)
+		out.WriteString("# Every page is walked, so data holds the whole collection and total_count is\n" +
+			"# what the API reports for it. A filter narrows the list; sort orders it.\n")
+		out.WriteString(dataBlock(ctx, typeName, exampleLabel, definition, force(attributes, filterAttribute)))
 
 	default:
-		fmt.Fprintf(&out, "data %q %q {}\n", typeName, exampleLabel)
+		// Whatever the object cannot be read without: its own id where the API
+		// takes one, and the ids of whatever it lives under.
+		out.WriteString(dataBlock(ctx, typeName, exampleLabel, definition, attributes))
 	}
 
 	return out.String()
 }
 
-// requiredArguments is arguments, for callers that only want to know whether there
-// were any.
-func requiredArguments(ctx context.Context, attributes map[string]exampleAttribute, prefix string, rawJSON, variants []string) string {
-	return arguments(ctx, attributes, prefix, rawJSON, variants)
+// dataBlock renders one data block holding the arguments that have to be set.
+func dataBlock(ctx context.Context, typeName, label string, definition genresource.DataSourceDefinition, attributes map[string]exampleAttribute) string {
+	var out strings.Builder
+
+	fmt.Fprintf(&out, "data %q %q {\n", typeName, label)
+	out.WriteString(indent(arguments(ctx, attributes, "", definition.RawJSONAttributes, definition.VariantBlocks), "  "))
+	out.WriteString("}\n")
+
+	return out.String()
+}
+
+// force marks one attribute as shown, leaving the rest as they are. It is how a
+// block gets the argument that picks the object — an id, a filter — beside
+// whatever the schema requires of it anyway, rendered in one pass so that the
+// arguments line up the way terraform fmt wants them.
+func force(attributes map[string]exampleAttribute, name string) map[string]exampleAttribute {
+	out := make(map[string]exampleAttribute, len(attributes))
+
+	for attributeName, attribute := range attributes {
+		if attributeName == name {
+			attribute.forced = true
+		}
+
+		out[attributeName] = attribute
+	}
+
+	return out
 }
 
 // settableArguments renders every argument a practitioner may set, for a block
@@ -651,6 +667,11 @@ func scalar(name string, elem attr.Type, reference bool) string {
 	switch {
 	case reference && (name == idAttribute || strings.HasSuffix(name, "_id")):
 		return fmt.Sprintf("%q", idExample)
+
+	case reference && name == filterAttribute:
+		// A filter is an expression in the API's own syntax, which a placeholder
+		// named after the argument would not show.
+		return `"` + filterExample + `"`
 
 	case name == "name", name == "display_name", name == "group_name":
 		return fmt.Sprintf("%q", exampleLabel)

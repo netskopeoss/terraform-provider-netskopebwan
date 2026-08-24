@@ -3,6 +3,7 @@ package genresource
 import (
 	"context"
 	"encoding/json"
+	"math/big"
 	"net/http"
 	"testing"
 
@@ -38,34 +39,29 @@ func fill(t *testing.T, typ tftypes.Type, members map[string]tftypes.Value) tfty
 	return tftypes.NewValue(asObject, full)
 }
 
-// thingsSchema stands in for a generated list data source: the collection's
-// query parameters plus the paginated envelope the API answers with.
-func thingsSchema(_ context.Context) dschema.Schema {
+// listSchema stands in for a generated list data source: the two ways a
+// collection can be narrowed, the elements, and the count the API reports for
+// them. The cursor parameters are absent because the generated schemas no longer
+// carry them — the whole collection is read, so there is no page to ask for.
+func listSchema(elements map[string]dschema.Attribute) dschema.Schema {
 	return dschema.Schema{
 		Attributes: map[string]dschema.Attribute{
-			"after":  dschema.StringAttribute{Optional: true, Computed: true},
-			"first":  dschema.Int64Attribute{Optional: true, Computed: true},
-			"filter": dschema.StringAttribute{Optional: true, Computed: true},
-			"sort":   dschema.ListAttribute{Optional: true, Computed: true, ElementType: types.StringType},
+			"filter":      dschema.StringAttribute{Optional: true, Computed: true},
+			"sort":        dschema.ListAttribute{Optional: true, Computed: true, ElementType: types.StringType},
+			"total_count": dschema.Int64Attribute{Computed: true},
 			"data": dschema.ListNestedAttribute{
-				Computed: true,
-				NestedObject: dschema.NestedAttributeObject{
-					Attributes: map[string]dschema.Attribute{
-						"id":   dschema.StringAttribute{Computed: true},
-						"name": dschema.StringAttribute{Computed: true},
-					},
-				},
-			},
-			"page_info": dschema.SingleNestedAttribute{
-				Computed: true,
-				Attributes: map[string]dschema.Attribute{
-					"end_cursor":  dschema.StringAttribute{Computed: true},
-					"has_next":    dschema.BoolAttribute{Computed: true},
-					"total_count": dschema.Int64Attribute{Computed: true},
-				},
+				Computed:     true,
+				NestedObject: dschema.NestedAttributeObject{Attributes: elements},
 			},
 		},
 	}
+}
+
+func thingsSchema(_ context.Context) dschema.Schema {
+	return listSchema(map[string]dschema.Attribute{
+		"id":   dschema.StringAttribute{Computed: true},
+		"name": dschema.StringAttribute{Computed: true},
+	})
 }
 
 func newDataSource(t *testing.T, def DataSourceDefinition, meta *Meta) (datasource.DataSource, dschema.Schema) {
@@ -104,6 +100,20 @@ func configFor(t *testing.T, schema dschema.Schema, members map[string]tftypes.V
 	return fill(t, schema.Type().TerraformType(context.Background()), members)
 }
 
+// count reads a number out of state. Numbers arrive from the API at full
+// precision, so they are compared as integers rather than as text.
+func count(t *testing.T, value tftypes.Value) int64 {
+	t.Helper()
+
+	var number big.Float
+	require.NoError(t, value.As(&number))
+
+	out, accuracy := number.Int64()
+	require.Equal(t, big.Exact, accuracy, "%s is not a whole number", value)
+
+	return out
+}
+
 func dataElements(t *testing.T, state tftypes.Value) []tftypes.Value {
 	t.Helper()
 
@@ -124,7 +134,10 @@ func thingsDefinition() DataSourceDefinition {
 	}
 }
 
-func TestListDataSourceWalksEveryPageByDefault(t *testing.T) {
+// TestListDataSourceWalksEveryPage covers the whole of what a list data source
+// answers with: every element of the collection, however many pages that took,
+// and the count the API reports for it rather than the last page's.
+func TestListDataSourceWalksEveryPage(t *testing.T) {
 	api, meta := newAPI(t)
 
 	// The first request must not carry a cursor; the second has to carry the one the
@@ -132,10 +145,10 @@ func TestListDataSourceWalksEveryPageByDefault(t *testing.T) {
 	gomock.InOrder(
 		api.EXPECT().
 			Do(gomock.Any(), request(http.MethodGet, "/things").withQuery("")).
-			Return(page("c1", true, object("1", "a"), object("2", "b")), nil),
+			Return(pageOf("c1", true, 3, object("1", "a"), object("2", "b")), nil),
 		api.EXPECT().
 			Do(gomock.Any(), request(http.MethodGet, "/things").withQuery("after=c1")).
-			Return(page("c2", false, object("3", "c")), nil),
+			Return(pageOf("c2", false, 3, object("3", "c")), nil),
 	)
 
 	source, schema := newDataSource(t, thingsDefinition(), meta)
@@ -144,29 +157,34 @@ func TestListDataSourceWalksEveryPageByDefault(t *testing.T) {
 
 	require.False(t, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
 	require.Len(t, dataElements(t, resp.State.Raw), 3, "a list data source returns the whole collection, not one page")
+
+	var members map[string]tftypes.Value
+	require.NoError(t, resp.State.Raw.As(&members))
+
+	require.Equal(t, int64(3), count(t, members[totalCountField]),
+		"the count is the API's own, plucked out of the envelope")
 }
 
-// TestListDataSourceHonoursAnExplicitPage relies on the mock to make the point:
-// asking for a page size means asking for exactly one page, so a second request
-// would fail the test.
-func TestListDataSourceHonoursAnExplicitPage(t *testing.T) {
+// TestListDataSourceCountsWhatItReadWhenTheAPIWillNot covers an endpoint
+// answering without a pagination envelope: there is still a count to report, and
+// it is the elements that arrived.
+func TestListDataSourceCountsWhatItReadWhenTheAPIWillNot(t *testing.T) {
 	api, meta := newAPI(t)
 
 	api.EXPECT().
-		Do(gomock.Any(), request(http.MethodGet, "/things").withQuery("first=1")).
-		Return(page("c1", true, object("1", "a")), nil).
-		Times(1)
+		Do(gomock.Any(), request(http.MethodGet, "/things")).
+		Return(json.RawMessage(`{"data": [{"id": "1", "name": "a"}, {"id": "2", "name": "b"}]}`), nil)
 
 	source, schema := newDataSource(t, thingsDefinition(), meta)
 
-	config := configFor(t, schema, map[string]tftypes.Value{
-		"first": tftypes.NewValue(tftypes.Number, 1),
-	})
-
-	resp := readDataSource(t, source, schema, config)
+	resp := readDataSource(t, source, schema, configFor(t, schema, nil))
 
 	require.False(t, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
-	require.Len(t, dataElements(t, resp.State.Raw), 1)
+
+	var members map[string]tftypes.Value
+	require.NoError(t, resp.State.Raw.As(&members))
+
+	require.Equal(t, int64(2), count(t, members[totalCountField]))
 }
 
 func TestListDataSourcePassesFiltersAsQueryParameters(t *testing.T) {
@@ -260,6 +278,142 @@ func TestSingularDataSourceReportsAMissingObject(t *testing.T) {
 
 	require.True(t, resp.Diagnostics.HasError())
 	require.Contains(t, resp.Diagnostics.Errors()[0].Summary(), "No thing found")
+}
+
+// listedDefinition is a data source for an object the API only ever lists: there
+// is no single-object endpoint, so the read is pointed at the collection and the
+// schema is the element's.
+func listedDefinition() DataSourceDefinition {
+	return DataSourceDefinition{
+		Name: "thing",
+		Schema: func(_ context.Context) dschema.Schema {
+			return dschema.Schema{
+				Attributes: map[string]dschema.Attribute{
+					"id":   dschema.StringAttribute{Required: true},
+					"name": dschema.StringAttribute{Computed: true},
+				},
+			}
+		},
+		Read:   Operation{Method: http.MethodGet, Path: "/things"},
+		Search: Operation{Method: http.MethodGet, Path: "/things"},
+	}
+}
+
+// TestListedObjectIsFoundInItsCollection covers the object the API has no by-id
+// endpoint for: the id is what the walk looks for, so it must not also be sent as
+// a filter, and the walk goes on across pages until the object turns up.
+func TestListedObjectIsFoundInItsCollection(t *testing.T) {
+	api, meta := newAPI(t)
+
+	gomock.InOrder(
+		api.EXPECT().
+			Do(gomock.Any(), request(http.MethodGet, "/things").withQuery("")).
+			Return(page("c1", true, object("thing-1", "first")), nil),
+		api.EXPECT().
+			Do(gomock.Any(), request(http.MethodGet, "/things").withQuery("after=c1")).
+			Return(page("", false, object("thing-2", "second")), nil),
+	)
+
+	source, schema := newDataSource(t, listedDefinition(), meta)
+
+	config := configFor(t, schema, map[string]tftypes.Value{"id": tftypes.NewValue(tftypes.String, "thing-2")})
+
+	resp := readDataSource(t, source, schema, config)
+
+	require.False(t, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
+
+	var members map[string]tftypes.Value
+	require.NoError(t, resp.State.Raw.As(&members))
+
+	var name string
+	require.NoError(t, members["name"].As(&name))
+	require.Equal(t, "second", name)
+}
+
+// TestListedObjectReportsAMissingID keeps the collection walk from answering with
+// nothing: a data source stands for an object, so an id that is not in the
+// collection is an error rather than an empty state.
+func TestListedObjectReportsAMissingID(t *testing.T) {
+	api, meta := newAPI(t)
+
+	api.EXPECT().
+		Do(gomock.Any(), request(http.MethodGet, "/things")).
+		Return(page("", false, object("thing-1", "first")), nil)
+
+	source, schema := newDataSource(t, listedDefinition(), meta)
+
+	config := configFor(t, schema, map[string]tftypes.Value{"id": tftypes.NewValue(tftypes.String, "missing")})
+
+	resp := readDataSource(t, source, schema, config)
+
+	require.True(t, resp.Diagnostics.HasError())
+	require.Equal(t, "No thing found", resp.Diagnostics.Errors()[0].Summary())
+	require.Contains(t, resp.Diagnostics.Errors()[0].Detail(), `has the id "missing"`)
+}
+
+// TestListedObjectIsAddressableWithoutAFilterableCollection covers the id of an
+// object the API only lists. The generated schema has it as a field of the object,
+// because that is where the collection's elements carry it; nothing could ask by
+// it unless the data source turns it into an argument, and a collection that
+// cannot be filtered leaves no other way in.
+func TestListedObjectIsAddressableWithoutAFilterableCollection(t *testing.T) {
+	_, meta := newAPI(t)
+
+	def := listedDefinition()
+	def.Search = Operation{}
+	def.Schema = func(_ context.Context) dschema.Schema {
+		return dschema.Schema{
+			Attributes: map[string]dschema.Attribute{
+				"id":   dschema.StringAttribute{Computed: true},
+				"name": dschema.StringAttribute{Computed: true},
+			},
+		}
+	}
+
+	_, schema := newDataSource(t, def, meta)
+
+	id, ok := schema.Attributes[idAttribute]
+	require.True(t, ok)
+	require.True(t, id.IsRequired(), "there is nothing else to read one of these by")
+	require.NotContains(t, schema.Attributes, filterAttribute, "the collection cannot be filtered")
+}
+
+// TestListedObjectCanStillBeFoundByFilter covers the other way to address one of
+// these: the collection is filterable, so the filter goes to the API and the
+// match has to be unique, exactly as it does for an object with a by-id endpoint.
+func TestListedObjectCanStillBeFoundByFilter(t *testing.T) {
+	api, meta := newAPI(t)
+
+	api.EXPECT().
+		Do(gomock.Any(), request(http.MethodGet, "/things").withQuery("filter=name+eq+%22second%22")).
+		Return(page("", false, object("thing-2", "second")), nil)
+
+	def := listedDefinition()
+	def.Schema = func(_ context.Context) dschema.Schema {
+		return dschema.Schema{
+			Attributes: map[string]dschema.Attribute{
+				"id":   dschema.StringAttribute{Optional: true, Computed: true},
+				"name": dschema.StringAttribute{Computed: true},
+			},
+		}
+	}
+
+	source, schema := newDataSource(t, def, meta)
+
+	config := configFor(t, schema, map[string]tftypes.Value{
+		filterAttribute: tftypes.NewValue(tftypes.String, `name eq "second"`),
+	})
+
+	resp := readDataSource(t, source, schema, config)
+
+	require.False(t, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
+
+	var members map[string]tftypes.Value
+	require.NoError(t, resp.State.Raw.As(&members))
+
+	var id string
+	require.NoError(t, members["id"].As(&id))
+	require.Equal(t, "thing-2", id)
 }
 
 // TestSingularDataSourceReportsAnEmptyResponse covers an endpoint that answers 204:

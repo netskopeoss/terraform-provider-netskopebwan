@@ -121,17 +121,22 @@ func TestEveryDataSourceSchemaIsUsable(t *testing.T) {
 // TestSingularDataSourcesCanBeFound checks that every data source addressing one
 // object can also look it up by filter, since every BWAN collection is
 // filterable.
+//
+// A data source is singular when its schema is one object's rather than a
+// collection's, which is not the same as its read addressing one: an object the
+// API only lists is read by walking the collection it belongs to, and its read
+// path is that collection.
 func TestSingularDataSourcesCanBeFound(t *testing.T) {
 	ctx := context.Background()
 
 	searchable := 0
 
 	for _, definition := range registry.DataSources() {
-		if !strings.Contains(definition.Read.Path, "{id}") {
+		schema := definition.Schema(ctx)
+
+		if _, collection := schema.Attributes["data"]; collection {
 			continue
 		}
-
-		schema := definition.Schema(ctx)
 
 		if definition.Search.Path == "" {
 			// An object hanging off another rather than sitting in a collection of
@@ -158,6 +163,94 @@ func TestSingularDataSourcesCanBeFound(t *testing.T) {
 	}
 
 	require.NotEmpty(t, searchable)
+}
+
+// TestObjectsTheAPIOnlyListsHaveADataSourceOfTheirOwn pins the objects that can
+// only be listed to the data source that reads one of them, so that dropping the
+// singular entry — or the fallback that generates it — is a test failure rather
+// than a data source quietly disappearing from the provider.
+func TestObjectsTheAPIOnlyListsHaveADataSourceOfTheirOwn(t *testing.T) {
+	ctx := context.Background()
+
+	reads := map[string]string{}
+
+	for _, definition := range registry.DataSources() {
+		reads[definition.Name] = definition.Read.Path
+	}
+
+	for name, path := range map[string]string{
+		"address_object":    "/address-groups/{group_id}/address-objects",
+		"app_category":      "/app-categories",
+		"audit_record":      "/auditevents",
+		"inventory_device":  "/inventory-devices",
+		"qosmos_app":        "/qosmos-apps",
+		"software_download": "/software-downloads",
+		"software_version":  "/software-versions",
+		"webroot_category":  "/webroot-categories",
+	} {
+		require.Contains(t, reads, name)
+
+		// The API has no single-object endpoint for any of these, so the read is the
+		// collection and the runtime finds the object in it.
+		require.Equal(t, path, reads[name], name)
+
+		for _, definition := range registry.DataSources() {
+			if definition.Name != name {
+				continue
+			}
+
+			attributes := definition.Schema(ctx).Attributes
+			require.NotContains(t, attributes, "data", "%s stands for one object, not a collection", name)
+			require.Contains(t, attributes, "id", name)
+		}
+	}
+}
+
+// TestListDataSourcesTakeFiltersAndAnswerWithACount pins the shape of every list
+// data source. The cursor arguments are the point: a collection is always read in
+// full, so a configuration has no page to ask for, and `total_count` is what the
+// API says the list holds.
+func TestListDataSourcesTakeFiltersAndAnswerWithACount(t *testing.T) {
+	ctx := context.Background()
+
+	lists := 0
+
+	for _, definition := range registry.DataSources() {
+		schema := definition.Schema(ctx)
+
+		if _, collection := schema.Attributes["data"]; !collection {
+			continue
+		}
+
+		lists++
+
+		total, ok := schema.Attributes["total_count"]
+		require.True(t, ok, "%s answers with no count", definition.Name)
+		require.True(t, total.IsComputed(), definition.Name)
+
+		require.NotContains(t, schema.Attributes, "page_info",
+			"%s: the walk is over by the time state is written", definition.Name)
+
+		for _, cursor := range []string{"first", "after"} {
+			require.NotContains(t, schema.Attributes, cursor,
+				"%s: every page is walked, so there is no page to ask for", definition.Name)
+		}
+
+		for name, attribute := range schema.Attributes {
+			if !attribute.IsRequired() && !attribute.IsOptional() {
+				continue
+			}
+
+			// What is left to set is the two ways of narrowing a collection, the
+			// tenant to read it in, and whatever the collection itself lives under.
+			require.True(t,
+				name == "filter" || name == "sort" || name == genresource.OperatingTenantAttribute ||
+					strings.Contains(definition.Read.Path, "{"+name+"}"),
+				"%s: %s is not something a list data source takes", definition.Name, name)
+		}
+	}
+
+	require.NotEmpty(t, lists)
 }
 
 // TestEveryRawObjectIsNamedAndGated re-checks at runtime what the registry

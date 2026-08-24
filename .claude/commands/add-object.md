@@ -14,7 +14,9 @@ the normalised form the generators see). Establish, for the object:
 
 - which of POST / GET / PATCH / DELETE exist, and on which paths;
 - whether a single object can be fetched at all — some collections have no
-  `GET /things/{id}`, and the runtime then refreshes by walking the collection;
+  `GET /things/{id}`. Both kinds of object then read the collection: a resource
+  refreshes by walking it, and a data source reads it with
+  `x_terraform.element: true`, which makes the entry stand for one element of it;
 - whether the create body branches (`oneOf`), and whether the response does;
 - whether any field is declared without a type, which forces the `_raw`
   treatment described in CLAUDE.md.
@@ -34,7 +36,9 @@ rather than shipping:
   carries `x_terraform.raw_feature: <name>`;
 - one endpoint serving several kinds of object gets one entry per kind, each
   with `x_terraform.variant: <kind>`;
-- a collection data source is the plural name; the singular addresses one object.
+- a collection data source is the plural name; the singular addresses one object,
+  reading `.../{id}` where the API serves one and the collection with
+  `x_terraform.element: true` where it does not.
 
 ## 3. Generate and look at what came out
 
