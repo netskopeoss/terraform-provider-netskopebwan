@@ -168,11 +168,14 @@ imports do not exist until it has run, so nothing compiles before it.
 
 `make docs` produces what the registry consumes, which is markdown. The usage
 example and import command on each page come from `examples/`, and `make
-examples` writes one for every object that has none — from the provider's own
-schema, so an example is made of arguments that exist and is rewritten whenever
-the schema moves. Every example is generated; removing the notice at the top of
-one takes it out of the generator's hands and leaves it to be maintained
-by hand. `docs-html` renders that into a site with a sidebar, a filter box and light and dark themes,
+examples` writes one per object — from the provider's own schema, so an example is
+made of arguments that exist and is rewritten whenever the schema moves. Each
+generated example opens with a one-line marker saying so, which is how the
+generator knows its own work from somebody else's; `make docs` takes that line back
+out of the code block it embedded the example into, so what a practitioner copies
+off a page is configuration and nothing else. Deleting the line takes the example
+out of the generator's hands for good.
+`docs-html` renders that into a site with a sidebar, a filter box and light and dark themes,
 because 92 pages of raw markdown in a browser is barely better than reading the
 files. `docs-serve` builds it and serves it, and takes a `PORT`.
 

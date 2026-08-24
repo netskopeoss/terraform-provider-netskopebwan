@@ -208,9 +208,12 @@ func TestGeneratedExamplesAreRewrittenAndHandWrittenOnesAreNot(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, written, result)
 
+	// One line of provenance, and it says what deleting it does. It is a Terraform
+	// comment, so the example is still a file terraform fmt accepts.
 	content, err := os.ReadFile(fresh)
 	require.NoError(t, err)
-	require.True(t, strings.HasPrefix(string(content), generatedMarker), "a generated example says so")
+	require.Equal(t, generatedMarker+"\nresource \"a\" \"b\" {}\n", string(content))
+	require.True(t, strings.HasPrefix(generatedMarker, "#"))
 
 	// The same example again is the same file, and a changed one is rewritten.
 	result, err = writeExample(fresh, "resource \"a\" \"b\" {}\n")
@@ -225,7 +228,8 @@ func TestGeneratedExamplesAreRewrittenAndHandWrittenOnesAreNot(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(content), `name = "moved"`, "the schema moved, so the example did")
 
-	// An example without the notice belongs to whoever wrote it.
+	// An example that does not open with the marker belongs to whoever wrote it —
+	// which is how examples/provider/provider.tf survives every run.
 	own := filepath.Join(dir, "own.tf")
 	require.NoError(t, os.WriteFile(own, []byte("# mine\nresource \"a\" \"b\" {}\n"), 0o644))
 
@@ -236,17 +240,16 @@ func TestGeneratedExamplesAreRewrittenAndHandWrittenOnesAreNot(t *testing.T) {
 	content, err = os.ReadFile(own)
 	require.NoError(t, err)
 	require.Equal(t, "# mine\nresource \"a\" \"b\" {}\n", string(content))
+}
 
-	// An import command is a shell script, and says the same thing in its own
-	// comment syntax.
-	script := filepath.Join(dir, "import.sh")
-
-	_, err = writeExample(script, "terraform import a.b id\n")
+// TestTheProviderExampleIsTheOneNobodyGenerates covers the escape hatch in the
+// tree rather than in a temporary directory: a `terraform` block is not a shape
+// any object's schema has, so that example is written by hand and carries no
+// marker.
+func TestTheProviderExampleIsTheOneNobodyGenerates(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("..", "..", "examples", "provider", "provider.tf"))
 	require.NoError(t, err)
-
-	content, err = os.ReadFile(script)
-	require.NoError(t, err)
-	require.Equal(t, generatedNoticeShell+"terraform import a.b id\n", string(content))
+	require.NotContains(t, string(content), generatedMarker)
 }
 
 // TestEveryObjectHasAnExample is what keeps the committed examples in step with
