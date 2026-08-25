@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -74,7 +75,21 @@ func (d *genericDataSource) prepare(ctx context.Context) {
 
 	d.schema = decorateDataSource(ctx, d.def)
 	d.model = tfschema.FromDataSource(ctx, d.schema, d.def.RawJSONAttributes, d.def.VariantBlocks, d.def.FieldNames)
-	d.collection = d.model.Attrs[dataField] != nil && d.model.Attrs[pageInfoField] != nil
+	d.collection = d.model.Attrs[dataField] != nil && d.model.Attrs[totalCountField] != nil
+}
+
+// walksCollection reports whether reading the one object this data source stands
+// for means finding it in a collection. Not every object has a single-object GET;
+// where it does not, the read is the collection the object belongs to, which is
+// how a resource without one is refreshed as well.
+func (d *genericDataSource) walksCollection() bool {
+	return !d.collection && readsWholeCollection(d.def.Read.Path)
+}
+
+// readsWholeCollection reports whether a read path names a collection rather than
+// one object in it.
+func readsWholeCollection(path string) bool {
+	return !slices.Contains(placeholders(path), idAttribute)
 }
 
 func (d *genericDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -145,9 +160,17 @@ func (d *genericDataSource) Read(ctx context.Context, req datasource.ReadRequest
 func (d *genericDataSource) document(ctx context.Context, config tftypes.Value) (any, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
+	skip := append(placeholders(d.def.Read.Path), OperatingTenantAttribute)
+
+	// An id the read walks a collection for is what the walk looks for, not
+	// something the API narrows the collection by.
+	if d.walksCollection() {
+		skip = append(skip, idAttribute)
+	}
+
 	// Every configurable attribute that is not part of the path is a filter the
 	// API takes as a query parameter.
-	query, err := d.model.Query(config, skipSet(append(placeholders(d.def.Read.Path), OperatingTenantAttribute)))
+	query, err := d.model.Query(config, skipSet(skip))
 	if err != nil {
 		diags.AddError("Invalid configuration", fmt.Sprintf("Cannot build the query for %s: %s.", d.def.Name, err))
 
@@ -172,7 +195,42 @@ func (d *genericDataSource) document(ctx context.Context, config tftypes.Value) 
 		return nil, diags
 	}
 
+	if d.walksCollection() {
+		return d.element(ctx, client, requestPath, config, url.Values(query))
+	}
+
 	return d.fetch(ctx, client, requestPath, url.Values(query))
+}
+
+// element finds the one object of a collection carrying the configured id, for an
+// object the API has no single-object endpoint for.
+func (d *genericDataSource) element(ctx context.Context, client bwanclient.API, requestPath string, config tftypes.Value, query url.Values) (any, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	identity, err := stringMembers(config, []string{idAttribute})
+	if err != nil {
+		diags.AddError("Incomplete configuration", fmt.Sprintf("Cannot identify the %s to read: %s.", d.def.Name, err))
+
+		return nil, diags
+	}
+
+	element, found, err := findByID(ctx, client, requestPath, identity[idAttribute], d.def.Variant, query)
+	if err != nil {
+		diags.AddError("Could not read "+d.def.Name, err.Error())
+
+		return nil, diags
+	}
+
+	if !found {
+		diags.AddError(
+			fmt.Sprintf("No %s found", d.def.Name),
+			fmt.Sprintf("Nothing in %s has the id %q.", d.def.Read.Path, identity[idAttribute]),
+		)
+
+		return nil, diags
+	}
+
+	return d.def.Variant.Flatten(element), diags
 }
 
 // searchable reports whether this read is a lookup by filter rather than by id.
@@ -231,10 +289,11 @@ func (d *genericDataSource) search(ctx context.Context, client bwanclient.API, c
 func (d *genericDataSource) fetch(ctx context.Context, client bwanclient.API, requestPath string, query url.Values) (any, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
-	// A caller that asked for a specific page gets exactly that page; otherwise
-	// every page is walked so `data` holds the whole collection rather than
-	// whatever the server's default page size happens to be.
-	if d.collection && !query.Has(firstParam) && !query.Has(afterParam) {
+	// A list data source stands for the whole collection: every page is walked, so
+	// `data` holds the list rather than whatever the server's default page size
+	// happens to be. There is no argument for asking for one page, which is why
+	// the cursor parameters are not in the schema.
+	if d.collection {
 		all, err := fetchAll(ctx, client, requestPath, query)
 		if err != nil {
 			diags.AddError("Could not read "+d.def.Name, err.Error())

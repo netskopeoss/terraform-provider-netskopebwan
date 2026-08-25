@@ -182,22 +182,27 @@ provider-schema:
 	mkdir -p $$(dirname $(PROVIDER_SCHEMA_FILE))
 	go run ./tools/tfdocs schema -out $(PROVIDER_SCHEMA_FILE)
 
-# Fill in the usage example on every documentation page that has none. The
-# examples are generated from the provider's own schema, and a file already on
-# disk is left alone, so a hand-written example is never overwritten by one of
-# these. They are committed, because docs/ is generated from them.
+# Write the usage example on every documentation page. The examples are generated
+# from the provider's own schema and rewritten on every run, so they follow it; a
+# file that does not open with the generator's marker line is somebody's own and is
+# left alone. They are committed, because docs/ is generated from them.
 examples:
 	@echo "Generating examples..."
 	go run ./tools/tfdocs examples -out $(EXAMPLES_DIR)
 
 # Generate Terraform docs. The schema comes from the provider itself, so
 # tfplugindocs neither builds it nor reaches the registry for it.
+#
+# The strip step takes each example's marker line back out of the code block
+# tfplugindocs embedded it into, so what a practitioner copies off a page is
+# configuration and nothing else.
 docs: provider-schema examples
 	@echo "Generating Terraform documentation..."
 	mkdir -p $(DOCS_DIR)
 	$(TFPLUGINDOCS) generate --provider-name $(PROVIDER_NAME) \
 	  --providers-schema $(PROVIDER_SCHEMA_FILE) \
 	  --rendered-website-dir $(DOCS_DIR)
+	go run ./tools/tfdocs strip -in $(DOCS_DIR)
 
 # The registry serves docs/ straight from the tagged tree, so what is committed
 # has to be what the generator produces. This fails if the two have drifted.

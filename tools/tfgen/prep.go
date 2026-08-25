@@ -72,6 +72,12 @@ type Prep struct {
 	// over without the collision guard in renameReservedProperties refusing it.
 	drops []string
 
+	// elements lists the collections a data source stands for one element of,
+	// rather than for the list. Each gets a synthetic path carrying the element's
+	// schema, for an object the API serves no single-object read for; see
+	// emitElementPaths.
+	elements []string
+
 	// taken records the branch each synthetic component was built from, so the
 	// metadata reaches the path that references it. direct marks the components
 	// that are a branch themselves rather than a clone reaching one.
@@ -123,10 +129,18 @@ func (p *Prep) Run() {
 	p.dropProperties()
 	p.renameReservedProperties()
 
+	// An object the API only lists has its element schema lifted onto a path of its
+	// own, before any path is cloned.
+	p.emitElementPaths()
+
 	// Claimed paths are cloned before anything is normalised: once a composed
 	// schema has been split across properties there is no composition left to
 	// take a variant of.
 	p.emitVariantPaths()
+
+	// Collections are reshaped after cloning so that a variant's clone of a list
+	// endpoint is reshaped too.
+	p.reshapeCollections()
 
 	for _, name := range slices.Sorted(maps.Keys(p.schemas)) {
 		p.transformComponent(name)

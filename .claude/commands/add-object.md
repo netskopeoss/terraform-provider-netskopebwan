@@ -14,7 +14,9 @@ the normalised form the generators see). Establish, for the object:
 
 - which of POST / GET / PATCH / DELETE exist, and on which paths;
 - whether a single object can be fetched at all — some collections have no
-  `GET /things/{id}`, and the runtime then refreshes by walking the collection;
+  `GET /things/{id}`. Both kinds of object then read the collection: a resource
+  refreshes by walking it, and a data source reads it with
+  `x_terraform.element: true`, which makes the entry stand for one element of it;
 - whether the create body branches (`oneOf`), and whether the response does;
 - whether any field is declared without a type, which forces the `_raw`
   treatment described in CLAUDE.md.
@@ -34,7 +36,9 @@ rather than shipping:
   carries `x_terraform.raw_feature: <name>`;
 - one endpoint serving several kinds of object gets one entry per kind, each
   with `x_terraform.variant: <kind>`;
-- a collection data source is the plural name; the singular addresses one object.
+- a collection data source is the plural name; the singular addresses one object,
+  reading `.../{id}` where the API serves one and the collection with
+  `x_terraform.element: true` where it does not.
 
 ## 3. Generate and look at what came out
 
@@ -53,10 +57,13 @@ distinctive fields).
 
 `make examples` writes a minimal example and an import command for the new object,
 and rewrites the existing ones so they follow the schema. Read what it produced.
-Every example in the repository is generated; if one needs to say more than the
-generator can, either teach the generator the rule — a block that requires
-nothing shows what it accepts instead, for example — or remove the notice at the
-top of that file, which takes it out of the generator's hands for good.
+Every example in the repository is generated, and opens with a one-line marker
+saying so — which `make docs` takes back out of the code block it embeds the
+example into, so the block a practitioner copies is configuration alone. If an
+example needs to say more than the generator can, either teach the generator the
+rule — a block that requires nothing shows what it accepts instead, for example —
+or delete that marker line, which takes the file out of the generator's hands for
+good.
 
 Then `make docs` and commit `docs/` and `examples/` with the change.
 

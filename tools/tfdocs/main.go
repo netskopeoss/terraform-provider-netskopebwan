@@ -1,11 +1,13 @@
 // Command tfdocs produces the provider's documentation.
 //
-//	tfdocs schema  writes the provider's schema in the shape
-//	               `terraform providers schema -json` produces
-//	tfdocs html    renders the markdown tfplugindocs generated into a
-//	               browsable HTML site
+//	tfdocs schema   writes the provider's schema in the shape
+//	                `terraform providers schema -json` produces
 //	tfdocs examples writes the usage example tfplugindocs renders onto each
-//	               object's page, for every object that has none
+//	                object's page
+//	tfdocs strip    takes the generator's marker back out of the examples
+//	                tfplugindocs embedded into those pages
+//	tfdocs html     renders the markdown tfplugindocs generated into a
+//	                browsable HTML site
 //
 // The schema step is what keeps generation offline: tfplugindocs can take that
 // file instead of discovering the schema for itself, so there is no terraform
@@ -39,7 +41,7 @@ func main() {
 
 func run(args []string) error {
 	if len(args) == 0 {
-		return errors.New("expected a subcommand: schema, examples or html")
+		return errors.New("expected a subcommand: schema, examples, strip or html")
 	}
 
 	switch args[0] {
@@ -47,10 +49,12 @@ func run(args []string) error {
 		return runSchema(args[1:])
 	case "examples":
 		return runExamples(args[1:])
+	case "strip":
+		return runStrip(args[1:])
 	case "html":
 		return runHTML(args[1:])
 	default:
-		return fmt.Errorf("unknown subcommand %q, expected schema, examples or html", args[0])
+		return fmt.Errorf("unknown subcommand %q, expected schema, examples, strip or html", args[0])
 	}
 }
 

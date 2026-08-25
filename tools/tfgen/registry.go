@@ -55,6 +55,12 @@ type terraformConfig struct {
 	// which is how one endpoint serving several kinds of object becomes several
 	// Terraform types.
 	Variant string `yaml:"variant"`
+	// Element says that this data source stands for one element of the collection
+	// its read names, rather than the collection itself. It is what an object the
+	// API serves no single-object read for needs: the schema comes from the
+	// collection's elements, and the runtime finds the object by walking the
+	// collection.
+	Element bool `yaml:"element"`
 }
 
 // rawAttributeSuffix marks an attribute holding an object's whole configuration
@@ -216,15 +222,8 @@ func readSearchablePaths(path string) (searchablePaths, error) {
 }
 
 func hasQueryParameter(operation map[string]any, name string) bool {
-	parameters, _ := operation["parameters"].([]any)
-
-	for _, parameter := range parameters {
-		asMap, ok := parameter.(map[string]any)
-		if !ok {
-			continue
-		}
-
-		if asMap["in"] == "query" && asMap["name"] == name {
+	for _, parameter := range parametersOf(operation) {
+		if parameter["in"] == "query" && stringOr(parameter["name"]) == name {
 			return true
 		}
 	}
@@ -232,16 +231,24 @@ func hasQueryParameter(operation map[string]any, name string) bool {
 	return false
 }
 
-// searchPath returns the filterable collection a single-object read path belongs
-// to, if the API has one.
-func (s searchablePaths) searchPath(readPath string) string {
-	const suffix = "/{" + idAttribute + "}"
+// searchFor returns the filterable collection a data source can look one object
+// up in, if the API has one.
+//
+// A read addressing an object by id belongs to the collection one segment above
+// it. A data source standing for one element of a collection reads that
+// collection already, so the search goes to the same place the read does.
+func (s searchablePaths) searchFor(readPath string, element bool) string {
+	collection := readPath
 
-	if !strings.HasSuffix(readPath, suffix) {
-		return ""
+	if !element {
+		found, ok := elementCollection(readPath)
+		if !ok {
+			return ""
+		}
+
+		collection = found
 	}
 
-	collection := strings.TrimSuffix(readPath, suffix)
 	if !s[collection] {
 		return ""
 	}
@@ -626,6 +633,10 @@ func renderDataSource(name string, config dataSourceConfig, rawJSON, variantBloc
 		return "", fmt.Errorf("data source %s: a read operation with a path and a method is required", name)
 	}
 
+	if err := checkElement(name, config); err != nil {
+		return "", err
+	}
+
 	var out strings.Builder
 
 	out.WriteString("\t\t{\n")
@@ -634,8 +645,9 @@ func renderDataSource(name string, config dataSourceConfig, rawJSON, variantBloc
 	fmt.Fprintf(&out, "\t\t\tRead:   %s,\n", renderOperation(config.Read))
 
 	// A data source addressing one object can also find it by filter, as long as
-	// the API lets its collection be filtered.
-	if search := searchable.searchPath(config.Read.Path); search != "" {
+	// the API lets its collection be filtered. For an object the API only lists,
+	// the read is that collection already.
+	if search := searchable.searchFor(config.Read.Path, config.Terraform.Element); search != "" {
 		fmt.Fprintf(&out, "\t\t\tSearch: genresource.Operation{Method: \"GET\", Path: %q},\n", search)
 	}
 
@@ -662,6 +674,34 @@ func renderDataSource(name string, config dataSourceConfig, rawJSON, variantBloc
 	out.WriteString("\t\t},\n")
 
 	return out.String(), nil
+}
+
+// checkElement rejects the two ways of claiming an element that cannot mean what
+// they say, so a configuration that is wrong about the API fails the build instead
+// of generating something odd.
+func checkElement(name string, config dataSourceConfig) error {
+	if !config.Terraform.Element {
+		return nil
+	}
+
+	// The point of the claim is that the API has no single-object read, so a read
+	// that already addresses one is either a mistake or an endpoint that makes the
+	// claim unnecessary.
+	if _, ok := elementCollection(config.Read.Path); ok {
+		return fmt.Errorf(
+			"data source %s claims an element of %s, which already addresses one object: drop x_terraform.element",
+			name, config.Read.Path)
+	}
+
+	// prep takes a variant of the collection's own schemas, which is not the same
+	// as taking one of the element lifted out of the envelope.
+	if config.Terraform.Variant != "" {
+		return fmt.Errorf(
+			"data source %s claims both an element of %s and the %q variant, which the generator cannot do",
+			name, config.Read.Path, config.Terraform.Variant)
+	}
+
+	return nil
 }
 
 func renderOperation(operation *operationConfig) string {

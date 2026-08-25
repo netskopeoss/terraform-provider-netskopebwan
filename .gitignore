@@ -9,8 +9,11 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 
-# Build artifacts
+# Build artifacts. Both tools land here from `go build ./tools/...`, which is not
+# how they are meant to be built — the Makefile puts them under .tools/bin — but
+# neither belongs in a commit when somebody does it anyway.
 /tfgen
+/tfdocs
 /.tools/
 *.exe
 *.exe~

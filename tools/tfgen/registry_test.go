@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -202,6 +203,117 @@ paths:
 	require.Contains(t, string(source), `Search: genresource.Operation{Method: "GET", Path: "/segments"}`)
 	require.NotContains(t, string(source), `Path: "/tags"}`)
 	require.NotContains(t, string(source), `Path: "/tenants/{id}"}`)
+}
+
+// TestRegistryReadsAClaimedElementFromItsCollection covers the data source for an
+// object the API only lists: the entry names the collection, because that is what
+// the API serves, and both the read and the filter go there.
+func TestRegistryReadsAClaimedElementFromItsCollection(t *testing.T) {
+	config := write(t, "generator_config.yml", `data_sources:
+  app_category:
+    x_terraform:
+      element: true
+    read: {path: "/app-categories", method: GET}
+  app_categories:
+    read: {path: "/app-categories", method: GET}
+  segment:
+    read: {path: "/segments/{id}", method: GET}
+`)
+
+	spec := write(t, "spec.json", `{
+		"provider": {"name": "bwan"},
+		"datasources": [
+			{"name": "app_category", "schema": {"attributes": [`+nameAttribute+`]}},
+			{"name": "app_categories", "schema": {"attributes": [`+nameAttribute+`]}},
+			{"name": "segment", "schema": {"attributes": [`+nameAttribute+`]}}
+		]
+	}`)
+
+	openapi := write(t, "openapi.yaml", `
+paths:
+  /app-categories:
+    get:
+      parameters:
+        - {name: filter, in: query, schema: {type: string}}
+  /segments:
+    get:
+      parameters:
+        - {name: filter, in: query, schema: {type: string}}
+  /segments/{id}:
+    get:
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+`)
+
+	source, err := generateRegistry(config, spec, openapi, "example.com/mod")
+
+	require.NoError(t, err)
+
+	// No path in the registry is one the API does not serve, and the synthetic path
+	// the schema was generated from reaches neither the registry nor the runtime.
+	require.NotContains(t, string(source), ElementSuffix)
+	require.NotContains(t, string(source), "/app-categories/{id}")
+
+	entry := entryFor(t, string(source), "app_category")
+	require.Contains(t, entry, `Read:   genresource.Operation{Method: "GET", Path: "/app-categories"}`)
+	require.Contains(t, entry, `Search: genresource.Operation{Method: "GET", Path: "/app-categories"}`)
+
+	// The list over the same endpoint gets no search: a filter is one of its own
+	// arguments, not a way of finding one object.
+	require.NotContains(t, entryFor(t, string(source), "app_categories"), "Search:")
+
+	// And an object the API does serve on its own is unaffected.
+	segment := entryFor(t, string(source), "segment")
+	require.Contains(t, segment, `Read:   genresource.Operation{Method: "GET", Path: "/segments/{id}"}`)
+	require.Contains(t, segment, `Search: genresource.Operation{Method: "GET", Path: "/segments"}`)
+}
+
+// TestRegistryRefusesAnElementClaimItCannotHonour covers a claim that is wrong
+// about the API rather than about the provider: a read that already addresses one
+// object needs no fallback, and a variant is taken of a collection's schemas
+// rather than of the element lifted out of them.
+func TestRegistryRefusesAnElementClaimItCannotHonour(t *testing.T) {
+	spec := write(t, "spec.json", `{
+		"provider": {"name": "bwan"},
+		"datasources": [{"name": "segment", "schema": {"attributes": [`+nameAttribute+`]}}]
+	}`)
+
+	byID := write(t, "by-id.yml", `data_sources:
+  segment:
+    x_terraform:
+      element: true
+    read: {path: "/segments/{id}", method: GET}
+`)
+
+	_, err := generateRegistry(byID, spec, "", "example.com/mod")
+	require.ErrorContains(t, err, "already addresses one object: drop x_terraform.element")
+
+	both := write(t, "both.yml", `data_sources:
+  segment:
+    x_terraform:
+      element: true
+      variant: overlay
+    read: {path: "/segments", method: GET}
+`)
+
+	_, err = generateRegistry(both, spec, "", "example.com/mod")
+	require.ErrorContains(t, err, `claims both an element of /segments and the "overlay" variant`)
+}
+
+// entryFor returns the registry entry for one object, so a test can say which
+// entry it is talking about rather than searching the whole file.
+func entryFor(t *testing.T, source, name string) string {
+	t.Helper()
+
+	start := strings.Index(source, `Name:   "`+name+`",`)
+	require.GreaterOrEqual(t, start, 0, "no entry for %s", name)
+
+	// The entry ends at its own closing brace, which is the one indented less than
+	// the fields inside it.
+	end := strings.Index(source[start:], "\n\t\t},")
+	require.GreaterOrEqual(t, end, 0)
+
+	return source[start : start+end]
 }
 
 func TestPascalMatchesTheFrameworkGenerator(t *testing.T) {

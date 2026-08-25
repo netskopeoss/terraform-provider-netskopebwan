@@ -13,13 +13,11 @@ description: |-
 ## Example Usage
 
 ```terraform
-# Generated from the provider's schema: the arguments this object requires, with
-# placeholders to fill in. Remove these two lines to maintain the example by hand.
 # This object's whole configuration is a JSON document the API declares no
 # shape for, so the data source is off until enable_raw_gateway is set
 # on the provider.
-# Every page is walked, so data holds the whole collection. A filter narrows
-# it; first or after ask for one page instead.
+# Every page is walked, so data holds the whole collection and total_count is
+# what the API reports for it. A filter narrows the list; sort orders it.
 data "netskopebwan_gateways_raw" "example" {
   filter = "name eq \"example\""
 }
@@ -30,15 +28,13 @@ data "netskopebwan_gateways_raw" "example" {
 
 ### Optional
 
-- `after` (String)
 - `filter` (String)
-- `first` (Number)
 - `sort` (List of String)
 
 ### Read-Only
 
 - `data` (Attributes List) (see [below for nested schema](#nestedatt--data))
-- `page_info` (Attributes) (see [below for nested schema](#nestedatt--page_info))
+- `total_count` (Number) Number of objects the API reports for this collection.
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`
@@ -74,14 +70,3 @@ Read-Only:
 
 - `id` (String)
 - `nrn` (String)
-
-
-
-<a id="nestedatt--page_info"></a>
-### Nested Schema for `page_info`
-
-Read-Only:
-
-- `end_cursor` (String)
-- `has_next` (Boolean)
-- `total_count` (Number)
