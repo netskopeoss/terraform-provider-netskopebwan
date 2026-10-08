@@ -32,12 +32,8 @@ adding an entry to [`generator_config.yml`](generator_config.yml).
         └──▶ tfgen registry         ──▶  internal/registry/registry_gen.go
 ```
 
-`make generate` runs all of it. The spec is downloaded from
-`$OPENAPI_BASE_URL/v2/openapi.json`. The variable is optional and defaults to
-`https://sys.api.ap.infiot.net`, the tenant what is committed under `docs/`
-describes. CI forwards the repository variable of the same name, so setting it
-there points every workflow at another tenant. `OPENAPI_SPEC_URL` takes a whole
-URL and wins over both.
+`make generate` runs all of it. The spec is downloaded from `OPENAPI_SPEC_URL`,
+which defaults to the tenant the Makefile names and can be pointed elsewhere.
 
 The two middle steps are HashiCorp's
 [OpenAPI provider spec generator](https://developer.hashicorp.com/terraform/plugin/code-generation/openapi-generator)

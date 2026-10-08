@@ -31,12 +31,8 @@ devenv shell
 make generate        # spec download → schemas → registry → mocks
 ```
 
-`make generate` downloads the spec every time, from
-`$OPENAPI_BASE_URL/v2/openapi.json`. The variable is optional and defaults to the
-AP tenant, which is also what the committed docs describe; CI forwards the
-`OPENAPI_BASE_URL` repository variable, and `OPENAPI_SPEC_URL` overrides with a
-whole URL. Pointing at another tenant locally makes `docs-check` report drift that
-is only the tenants differing. It is not pinned, so two runs a
+`make generate` downloads the spec every time, from `OPENAPI_SPEC_URL`
+(defaulting to the tenant the Makefile names). It is not pinned, so two runs a
 day apart can generate different providers.
 
 ## The spec moves under you

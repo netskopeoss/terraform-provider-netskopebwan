@@ -49,7 +49,7 @@ jobs:
       # not compile, same as ci.yml.
       - name: Generate
         env:
-          OPENAPI_BASE_URL: ${{ vars.OPENAPI_BASE_URL }}
+          OPENAPI_SPEC_URL: ${{ vars.OPENAPI_SPEC_URL }}
         run: make generate
 
       - name: Build HTML docs

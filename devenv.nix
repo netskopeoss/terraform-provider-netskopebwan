@@ -68,10 +68,10 @@ in
 
   env.GOTOOLCHAIN = "auto";
 
-  # OPENAPI_BASE_URL and OPENAPI_SPEC_URL are deliberately not set here. A devenv
-  # env entry overrides whatever the caller exported, which would make the
-  # variable look settable while being ignored; the Makefile defaults them with ?=
-  # instead, so CI can point a run at a different tenant.
+  # OPENAPI_SPEC_URL is deliberately not set here. A devenv env entry overrides
+  # whatever the caller exported, which would make the variable look settable
+  # while being ignored; the Makefile defaults it with ?= instead, so CI can
+  # point a run at a different spec.
 
   enterShell = ''
     export TOOLS_BIN="$PWD/.tools/bin"

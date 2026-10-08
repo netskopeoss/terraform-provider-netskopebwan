@@ -37,7 +37,7 @@ jobs:
       # not compile. goreleaser would fail here rather than in the build.
       - name: Generate
         env:
-          OPENAPI_BASE_URL: ${{ vars.OPENAPI_BASE_URL }}
+          OPENAPI_SPEC_URL: ${{ vars.OPENAPI_SPEC_URL }}
         run: make generate
 
       # The registry serves docs/ from this tag. If it has drifted from the
