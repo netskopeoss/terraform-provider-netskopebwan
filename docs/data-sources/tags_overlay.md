@@ -46,8 +46,8 @@ Read-Only:
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--data--modified_by))
 - `name` (String)
-- `overlay_private` (Boolean)
-- `overlay_reachable` (Boolean)
+- `private` (Boolean) Private overlay network
+- `reachable` (Boolean) Cloud reachable overlay
 - `system` (Boolean)
 
 <a id="nestedatt--data--created_by"></a>

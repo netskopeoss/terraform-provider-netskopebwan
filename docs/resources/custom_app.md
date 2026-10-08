@@ -80,7 +80,6 @@ resource "netskopebwan_custom_app" "example" {
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
 - `sites` (Attributes List) (see [below for nested schema](#nestedatt--sites))
-- `tenant_id` (String)
 - `type` (String)
 - `vid` (Number)
 

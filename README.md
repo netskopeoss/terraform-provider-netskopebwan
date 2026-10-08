@@ -3,18 +3,6 @@
 Terraform provider for Netskope Borderless WAN, generated from the BWAN v2
 OpenAPI document that the REST gateway itself serves.
 
-> [!WARNING]
-> **The 1.x line is an alpha; use the released 0.x line for now.** 1.x resources,
-> data sources and attributes are generated from the BWAN v2 OpenAPI
-> specification, which is itself still changing, so any of them may be renamed,
-> reshaped or removed from one prerelease to the next, and a configuration or
-> state written against one may need reworking for the next. Until 1.0.0 is
-> released, ask for `version = "~> 0.0"`. Terraform installs a prerelease only for
-> an exact version, and a prerelease then refuses to configure until that same
-> version is acknowledged with the `enable_pre_release` argument, so nobody runs
-> the 1.x line by accident. Setting it accepts that instability: a prerelease is
-> NOT covered by the provider's backward-compatibility guarantees.
-
 Nothing here is written per resource. Adding an object to the provider means
 adding an entry to [`generator_config.yml`](generator_config.yml).
 
@@ -85,18 +73,16 @@ object. An entry claiming a `variant` gets the shape to itself:
 
 ```hcl
 resource "netskopebwan_tag_wanlink" "probe" {
-  name = "probe"
-  config = {
-    type               = "wanlink"
-    wan_link_frequency = 60       # only a wanlink tag has one
-  }
+  name      = "probe"
+  type      = "wanlink"
+  frequency = 60000 # only a wanlink tag has one
 }
 ```
 
-Four kinds of tag become four resources, and `wan_link_frequency` is settable on
+Four kinds of tag become four resources, and `frequency` is settable on
 the one that has it rather than optional on all four and rejected by the API on
-three. The API still serves them all from `/overlay-tags`, telling them apart by
-`config.type`, so each type recognises its own objects: reading one by id checks
+three. The API serves them all from `/tags`, telling them apart by `type`, so
+each type recognises its own objects: reading one by id checks
 it really is that kind, and a list drops the others.
 
 **A block per shape**, where the choice is about how one object is configured.

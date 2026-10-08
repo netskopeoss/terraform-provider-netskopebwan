@@ -38,11 +38,11 @@ data "netskopebwan_tag_wanlink" "by_filter" {
 - `created_by` (Attributes) (see [below for nested schema](#nestedatt--created_by))
 - `description` (String)
 - `enabled` (Boolean)
+- `frequency` (Number) WAN link frequency in milliseconds
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
 - `name` (String)
 - `system` (Boolean)
-- `wan_link_frequency` (Number)
 
 <a id="nestedatt--created_by"></a>
 ### Nested Schema for `created_by`

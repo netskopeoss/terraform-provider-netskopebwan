@@ -9,8 +9,8 @@ import (
 
 // Variant identifies one kind of object on an endpoint that serves several.
 //
-// The API creates, reads and lists all four kinds of tag through /overlay-tags,
-// telling them apart by a `config.type` field. Each kind is its own Terraform
+// The API creates, reads and lists all four kinds of tag through /tags,
+// telling them apart by a `type` field. Each kind is its own Terraform
 // type, so each one has to recognise its own objects and ignore the rest:
 // without that, listing wanlink tags would return overlay tags with every
 // wanlink field null, and reading one by id would quietly adopt an object of the
@@ -19,8 +19,7 @@ type Variant struct {
 	// Name is the branch as the spec names it, e.g. "wanlink".
 	Name string
 	// Discriminator is the field whose value selects the kind, where the API
-	// declares one, dotted where the field is nested: a tag's kind is at
-	// `config.type`.
+	// declares one, dotted where the field is nested (`config.type`).
 	Discriminator string
 	// Value is what Discriminator holds for this kind.
 	Value string
@@ -35,6 +34,10 @@ type Variant struct {
 	// Wrapped names the fields that belong under Wrapper, which is what it takes to
 	// build a request: hoisted into the object, they look like any other field of it.
 	Wrapped []string
+	// Implied says the schema leaves out Discriminator, which sits on the object
+	// itself, because the Terraform type already says which kind it is. Nest writes
+	// it back.
+	Implied bool
 }
 
 // Matches reports whether document is the kind of object v stands for. A nil
@@ -119,13 +122,26 @@ func (v *Variant) Flatten(document any) any {
 
 // Nest is the inverse, for a request body: the fields Wrapped names go back under
 // Wrapper, and the discriminator the schema does not carry is written beside them.
+// A kind with no wrapper but an implied discriminator only gets the discriminator.
 //
 // The wrapper is written even when nothing goes into it. A topology tag is
 // `{"config": {"type": "topology"}}` and nothing more, and the API requires that
 // much; the schema, having neither the wrapper nor the discriminator, cannot say it.
 func (v *Variant) Nest(body map[string]any) map[string]any {
-	if v == nil || v.Wrapper == "" {
+	if v == nil {
 		return body
+	}
+
+	if v.Wrapper == "" {
+		if !v.Implied {
+			return body
+		}
+
+		out := make(map[string]any, len(body)+1)
+		maps.Copy(out, body)
+		out[v.Discriminator] = v.Value
+
+		return out
 	}
 
 	out := make(map[string]any, len(body)+1)

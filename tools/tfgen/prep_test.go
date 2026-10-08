@@ -265,6 +265,19 @@ components:
 	require.Equal(t, "Protocol Enum Must be one of: `TCP`, `UDP`.", stringOr(protocol["description"]))
 }
 
+// TestPrepDocumentsEnumValuesOnce covers a schema reached twice, which is what a
+// discriminated branch is: the tags' `type` read "Must be one of: `wanlink`. Must
+// be one of: `wanlink`." once the discriminator moved onto the object itself.
+func TestPrepDocumentsEnumValuesOnce(t *testing.T) {
+	schema := map[string]any{"type": "string", "description": "Kind", "enum": []any{"wanlink"}}
+
+	prep := &Prep{}
+	prep.documentEnum(schema, "first")
+	prep.documentEnum(schema, "second")
+
+	require.Equal(t, "Kind Must be one of: `wanlink`.", stringOr(schema["description"]))
+}
+
 func TestPrepRenamesDashedPathParameters(t *testing.T) {
 	doc, warnings := runPrepOn(t, `
 paths:
@@ -488,6 +501,7 @@ components:
 		"match":         []any{"wan_link_frequency"},
 		"wrapper":       "config",
 		"wrapped":       []any{"wan_link_frequency"},
+		"implied":       false,
 	}, variantMetadataOf(t, doc, "/overlay-tags@wanlink"))
 
 	require.Equal(t, "config.type", variantMetadataOf(t, doc, "/overlay-tags@overlay")["discriminator"])
@@ -515,6 +529,111 @@ components:
 	overlay, _ := schema(t, doc, "OverlayTagOverlay")["properties"].(map[string]any)
 	require.Contains(t, overlay, "overlay_private")
 	require.NotContains(t, overlay, "wan_link_frequency")
+}
+
+// The spec has since put the kind of tag back on the tag itself. The branch then
+// declares its own `type`, and the Terraform type already says which kind it is,
+// so the property goes the way it went from inside a wrapper: out of the schema,
+// recorded as implied so the runtime writes it back into a request.
+func TestPrepHidesADiscriminatorOnTheObjectItself(t *testing.T) {
+	doc, warnings := runPrepClaiming(t, `
+paths:
+  /tags:
+    get:
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: {$ref: '#/components/schemas/Tag'}
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TagCreate'}
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Tag'}
+components:
+  schemas:
+    WanlinkTag:
+      type: object
+      required: [id, name, type]
+      properties:
+        id: {type: string, readOnly: true}
+        name: {type: string}
+        type: {type: string, enum: [wanlink]}
+        frequency: {type: integer}
+    OverlayTag:
+      type: object
+      required: [id, name, type]
+      properties:
+        id: {type: string, readOnly: true}
+        name: {type: string}
+        type: {type: string, enum: [overlay]}
+    Tag:
+      oneOf:
+        - $ref: '#/components/schemas/WanlinkTag'
+        - $ref: '#/components/schemas/OverlayTag'
+      discriminator:
+        propertyName: type
+        mapping:
+          wanlink: '#/components/schemas/WanlinkTag'
+          overlay: '#/components/schemas/OverlayTag'
+    WanlinkTagCreate:
+      type: object
+      required: [name, type]
+      properties:
+        name: {type: string}
+        type: {type: string, enum: [wanlink]}
+        frequency: {type: integer}
+    OverlayTagCreate:
+      type: object
+      required: [name, type]
+      properties:
+        name: {type: string}
+        type: {type: string, enum: [overlay]}
+    TagCreate:
+      oneOf:
+        - $ref: '#/components/schemas/WanlinkTagCreate'
+        - $ref: '#/components/schemas/OverlayTagCreate'
+      discriminator:
+        propertyName: type
+        mapping:
+          wanlink: '#/components/schemas/WanlinkTagCreate'
+          overlay: '#/components/schemas/OverlayTagCreate'
+`, map[string][]string{"/tags": {"wanlink", "overlay"}})
+
+	require.Empty(t, warnings)
+
+	require.Equal(t, map[string]any{
+		"name":          "wanlink",
+		"discriminator": "type",
+		"value":         "wanlink",
+		"match":         []any{"frequency"},
+		"wrapper":       "",
+		"wrapped":       []any{},
+		"implied":       true,
+	}, variantMetadataOf(t, doc, "/tags@wanlink"))
+
+	for _, name := range []string{"TagWanlink", "TagCreateWanlink", "TagOverlay", "TagCreateOverlay"} {
+		object := schema(t, doc, name)
+		properties, _ := object["properties"].(map[string]any)
+
+		require.Contains(t, properties, "name", name)
+		require.NotContains(t, properties, "type", name)
+		require.NotContains(t, stringList(object["required"]), "type", name)
+		require.Contains(t, stringList(object["required"]), "name", name)
+	}
+
+	wanlink, _ := schema(t, doc, "TagWanlink")["properties"].(map[string]any)
+	require.Contains(t, wanlink, "frequency")
 }
 
 // A wrapper is only hoisted where what comes out of it can be told from what is

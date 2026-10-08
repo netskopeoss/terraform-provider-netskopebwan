@@ -34,34 +34,10 @@ const (
 // resource a docs/ page belongs to.
 const TypeName = "netskopebwan"
 
-// providerSummary, AlphaHeadline and AlphaDetail are what the provider says
-// about itself. They travel through the provider schema into docs/index.md,
-// which is the page the Terraform registry shows first, so a practitioner reads
-// how finished this provider is before installing it rather than after.
-//
-// The README says the same thing for anyone who arrives at the repository
-// instead, and a test holds the two together.
-const (
-	providerSummary = "Manages Netskope Borderless WAN through its v2 API."
-
-	// AlphaHeadline is the warning itself, short enough to be read, and says what
-	// to do rather than only what to fear. The registry treats a prerelease as
-	// the latest version even though Terraform will not install one, so this page
-	// is what a practitioner sees first and it has to send them to the 0.x line.
-	AlphaHeadline = "The 1.x line is an alpha; use the released 0.x line for now."
-
-	// AlphaDetail is why the 1.x schema cannot be promised — it is generated from
-	// a specification that is still moving — and how to ask for either line.
-	AlphaDetail = "1.x resources, data sources and attributes are generated from the BWAN v2 " +
-		"OpenAPI specification, which is itself still changing, so any of them may be renamed, " +
-		"reshaped or removed from one prerelease to the next, and a configuration or state " +
-		"written against one may need reworking for the next. Until 1.0.0 is released, ask for " +
-		`version = "~> 0.0". Terraform installs a prerelease only for an exact version, and a ` +
-		"prerelease then refuses to configure until that same version is acknowledged with the " +
-		PreReleaseArgument + " argument, so nobody runs the 1.x line by accident. Setting it " +
-		"accepts that instability: a prerelease is NOT covered by the provider's " +
-		"backward-compatibility guarantees."
-)
+// providerSummary is what the provider says about itself. It travels through the
+// provider schema into docs/index.md, which is the page the Terraform registry
+// shows first.
+const providerSummary = "Manages Netskope Borderless WAN through its v2 API."
 
 // PreReleaseArgument is the provider argument a prerelease build has to be
 // acknowledged through before it will configure.
@@ -143,8 +119,8 @@ func (p *bwanProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp 
 	}
 
 	resp.Schema = schema.Schema{
-		Description:         providerSummary + " " + AlphaHeadline + " " + AlphaDetail,
-		MarkdownDescription: providerSummary + "\n\n~> **" + AlphaHeadline + "** " + AlphaDetail,
+		Description:         providerSummary,
+		MarkdownDescription: providerSummary,
 		Attributes:          attributes,
 	}
 }

@@ -46,7 +46,6 @@ data "netskopebwan_custom_app" "by_filter" {
 - `name` (String)
 - `native` (Boolean)
 - `sites` (Attributes List) (see [below for nested schema](#nestedatt--sites))
-- `tenant_id` (String)
 - `type` (String)
 - `type_id` (Number)
 - `vid` (Number)

@@ -42,7 +42,6 @@ data "netskopebwan_gateway_group" "by_filter" {
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
 - `name` (String)
-- `tenant_id` (String)
 - `type` (String) Must be one of: `hub`, `spoke`.
 
 <a id="nestedatt--created_by"></a>

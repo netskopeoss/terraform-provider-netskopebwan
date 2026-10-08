@@ -34,7 +34,7 @@ resource "netskopebwan_tag_topology" "example" {
 
 - `created_at` (String)
 - `created_by` (Attributes) (see [below for nested schema](#nestedatt--created_by))
-- `id` (String) Overlay Tag ID
+- `id` (String) Tag ID
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
 - `system` (Boolean)

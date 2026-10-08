@@ -53,6 +53,7 @@ data "netskopebwan_client_template" "by_filter" {
 - `mtu_bytes` (Number)
 - `multi_link_support` (String) Multilink support type Must be one of: `none`, `active_active`, `active_standby`.
 - `name` (String)
+- `on_demand` (Boolean)
 - `on_premise_detection` (Attributes) (see [below for nested schema](#nestedatt--on_premise_detection))
 - `policy_id` (String)
 - `rank` (Number)

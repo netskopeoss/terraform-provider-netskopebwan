@@ -51,6 +51,10 @@ type variant struct {
 	// takes to put them back: once hoisted they look like any other property of the
 	// object holding them.
 	Wrapped []string
+	// Implied is set where the discriminator sits on the object itself and was
+	// dropped from the schema, because the Terraform type already says which kind
+	// it is. The runtime writes it back into a request. See hideDiscriminator.
+	Implied bool
 	// Schema is the branch merged with whatever the composed schema declared
 	// alongside the composition, so it stands alone as an object's whole schema.
 	Schema map[string]any
@@ -237,6 +241,7 @@ func (p *Prep) emitVariantPaths() {
 					"match":         toAnyList(responded.Match),
 					"wrapper":       responded.Wrapper,
 					"wrapped":       toAnyList(responded.Wrapped),
+					"implied":       responded.Implied,
 				}
 			case found != nil:
 			case len(p.variantNamesOn(item)) > 0:
@@ -324,7 +329,12 @@ func (p *Prep) rewriteToVariant(node any, name string, inFlight map[string]bool,
 				typed["$ref"] = component
 			}
 
-			return pickVariant(found, replacement.under(path, direct), direct)
+			placed := replacement.under(path, direct)
+			if direct && placed != nil && len(placed.Path) == 0 {
+				p.hideDiscriminator(component, placed)
+			}
+
+			return pickVariant(found, placed, direct)
 		}
 
 		if props, ok := typed["properties"].(map[string]any); ok {
@@ -515,6 +525,44 @@ func (p *Prep) hoistWrapper(schema map[string]any, found *variant, loc string) *
 	out.Wrapped = slices.Sorted(maps.Keys(hoisted))
 
 	return &out
+}
+
+// hideDiscriminator drops the discriminator from a branch that carries it on the
+// object itself, for the reason hoistWrapper drops one from inside a wrapper: a
+// Terraform type that is one kind of tag already says which kind it is, so
+// requiring `type = "wanlink"` on netskopebwan_tag_wanlink asks a practitioner to
+// write the resource name down again. The runtime writes it back when it builds a
+// request; see genresource.Variant.Nest.
+//
+// Only a discriminator at the top of the object is hidden. One nested inside a
+// property is hoistWrapper's to deal with, and hiding it here would leave the
+// runtime nowhere to put it back.
+func (p *Prep) hideDiscriminator(component string, found *variant) {
+	if found.Discriminator == "" || found.Value == "" || strings.Contains(found.Discriminator, ".") {
+		return
+	}
+
+	name, ok := componentName(component)
+	if !ok {
+		return
+	}
+
+	schema, ok := p.schemas[name].(map[string]any)
+	if !ok {
+		return
+	}
+
+	props, _ := schema["properties"].(map[string]any)
+	if _, declared := props[found.Discriminator]; !declared {
+		return
+	}
+
+	delete(props, found.Discriminator)
+	setRequired(schema, removedFromList(stringList(schema["required"]), found.Discriminator))
+
+	if taken := p.taken[name]; taken != nil {
+		taken.Implied = true
+	}
 }
 
 // branchBehind returns the component a hoisted wrapper was narrowed to. Only a
