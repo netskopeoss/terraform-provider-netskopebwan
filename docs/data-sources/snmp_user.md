@@ -41,7 +41,7 @@ data "netskopebwan_snmp_user" "by_filter" {
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
 - `name` (String) SNMPv3 USM username, unique per tenant
 - `privacy_protocol` (String) Privacy (encryption) protocol Must be one of: `aes128`, `aes256`.
-- `security_level` (String) USM security level determining which credentials apply Must be one of: `no_auth_no_priv`, `auth_no_priv`, `auth_priv`.
+- `security_level` (String) USM security level determining which credentials apply Must be one of: `auth_no_priv`, `auth_priv`, `no_auth_no_priv`.
 
 <a id="nestedatt--created_by"></a>
 ### Nested Schema for `created_by`

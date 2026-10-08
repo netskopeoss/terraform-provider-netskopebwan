@@ -51,7 +51,7 @@ data "netskopebwan_client_template" "by_filter" {
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
 - `mtu_bytes` (Number)
-- `multi_link_support` (String) Multilink support type Must be one of: `none`, `active_active`, `active_standby`.
+- `multi_link_support` (String) Multilink support type Must be one of: `active_active`, `active_standby`, `none`.
 - `name` (String)
 - `on_demand` (Boolean)
 - `on_premise_detection` (Attributes) (see [below for nested schema](#nestedatt--on_premise_detection))

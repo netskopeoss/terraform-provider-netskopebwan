@@ -25,7 +25,7 @@ resource "netskopebwan_snmp_user" "example" {
 ### Required
 
 - `name` (String) SNMPv3 USM username, unique per tenant
-- `security_level` (String) USM security level determining which credentials apply Must be one of: `no_auth_no_priv`, `auth_no_priv`, `auth_priv`.
+- `security_level` (String) USM security level determining which credentials apply Must be one of: `auth_no_priv`, `auth_priv`, `no_auth_no_priv`.
 
 ### Optional
 

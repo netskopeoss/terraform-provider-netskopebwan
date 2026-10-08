@@ -34,7 +34,7 @@ data "netskopebwan_software_version" "by_filter" {
 
 ### Read-Only
 
-- `channel` (String) Must be one of: `ga`, `beta`, `experimental`, `gold`, `none`.
+- `channel` (String) Must be one of: `beta`, `experimental`, `ga`, `gold`, `none`.
 - `controller` (Boolean)
 - `customer_channels` (List of String)
 - `manifest_url` (String)

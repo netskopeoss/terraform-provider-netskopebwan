@@ -258,11 +258,24 @@ components:
 	properties, _ := gateway["properties"].(map[string]any)
 
 	model, _ := properties["model"].(map[string]any)
-	require.Equal(t, "Must be one of: `NSGVirtual`, `NSG100W`.", stringOr(model["description"]))
+	require.Equal(t, "Must be one of: `NSG100W`, `NSGVirtual`.", stringOr(model["description"]))
 
 	// An existing description is kept, with the allowed values appended.
 	protocol, _ := properties["protocol"].(map[string]any)
 	require.Equal(t, "Protocol Enum Must be one of: `TCP`, `UDP`.", stringOr(protocol["description"]))
+}
+
+// The values are listed alphabetically whatever order the API declared them in,
+// so a build that emits the same enum in another order does not rewrite the docs.
+func TestPrepDocumentsEnumValuesAlphabetically(t *testing.T) {
+	for _, declared := range [][]any{{"c", "a", "b"}, {"b", "c", "a"}} {
+		schema := map[string]any{"type": "string", "enum": declared}
+
+		(&Prep{}).documentEnum(schema, "loc")
+
+		require.Equal(t, "Must be one of: `a`, `b`, `c`.", stringOr(schema["description"]))
+		require.Equal(t, declared, schema["enum"], "the enum itself is left as declared")
+	}
 }
 
 // TestPrepDocumentsEnumValuesOnce covers a schema reached twice, which is what a
