@@ -2,6 +2,8 @@ package provider
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -281,6 +283,54 @@ func TestEveryRawObjectIsNamedAndGated(t *testing.T) {
 		require.True(t, strings.HasSuffix(definition.Name, "_raw"),
 			"data source %s has to keep the plain name free for a typed replacement", definition.Name)
 	}
+}
+
+// TestProviderStatesItsStability covers the two places a practitioner can meet
+// this provider: the registry's home page, which tfplugindocs renders from the
+// provider schema, and the README. Both carry the same notice.
+func TestProviderStatesItsStability(t *testing.T) {
+	ctx := context.Background()
+
+	resp := &provider.SchemaResponse{}
+	newProvider(t).Schema(ctx, provider.SchemaRequest{}, resp)
+
+	require.False(t, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
+
+	plain := strings.ReplaceAll(stabilityNotice, "{constraint}", versionConstraint)
+
+	require.Contains(t, resp.Schema.Description, plain)
+
+	// docs/index.md renders the markdown description, where the notice is a
+	// registry callout. The callout opens with a tilde, and the registry reads a
+	// second one in the same paragraph as strikethrough, striking out everything
+	// between them: the version constraint has to be code, and nothing else in the
+	// description may carry a tilde.
+	markdown := resp.Schema.MarkdownDescription
+
+	require.Contains(t, markdown, "~> "+strings.ReplaceAll(stabilityNotice, "{constraint}", "`"+versionConstraint+"`"))
+	require.Equal(t, 2, strings.Count(markdown, "~"), "the callout's own and the one inside the code span")
+	require.Contains(t, markdown, "`"+versionConstraint+"`")
+
+	// The notice says what acknowledging a prerelease accepts, not only that one
+	// has to be acknowledged.
+	require.Contains(t, stabilityNotice, "Setting it accepts that instability")
+	require.Contains(t, stabilityNotice, "NOT covered by the provider's backward-compatibility guarantees")
+
+	readme, err := os.ReadFile(filepath.Join("..", "..", "README.md"))
+	require.NoError(t, err)
+
+	// The README wraps the notice across lines, quotes it as a callout and marks up
+	// the arguments it names, so it is the words that have to match rather than the
+	// layout. Only the quoting is stripped, not every ">": the notice names a "~>"
+	// constraint.
+	lines := strings.Split(string(readme), "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimPrefix(strings.TrimSpace(line), "> ")
+	}
+
+	prose := strings.Join(strings.Fields(strings.ReplaceAll(strings.Join(lines, " "), "`", "")), " ")
+
+	require.Contains(t, prose, plain)
 }
 
 // configure runs Configure against a provider stamped with version, with the

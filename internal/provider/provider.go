@@ -34,10 +34,32 @@ const (
 // resource a docs/ page belongs to.
 const TypeName = "netskopebwan"
 
-// providerSummary is what the provider says about itself. It travels through the
-// provider schema into docs/index.md, which is the page the Terraform registry
-// shows first.
-const providerSummary = "Manages Netskope Borderless WAN through its v2 API."
+// providerSummary and stabilityNotice are what the provider says about itself.
+// They travel through the provider schema into docs/index.md, which is the page
+// the Terraform registry shows first.
+//
+// The README says the same thing for anyone who arrives at the repository
+// instead, and a test holds the two together.
+const (
+	providerSummary = "Manages Netskope Borderless WAN through its v2 API."
+
+	// stabilityNotice is why the 1.x schema cannot be promised — it is generated
+	// from a specification that is still moving — and how to ask for either line.
+	// The version constraint is a placeholder so each rendering can mark it up: the
+	// registry reads a pair of tildes as strikethrough, and this notice is a
+	// callout that already opens with one.
+	stabilityNotice = "1.x resources, data sources and attributes are generated from the BWAN v2 " +
+		"OpenAPI specification, which is itself still changing, so any of them may be renamed, " +
+		"reshaped or removed from one prerelease to the next, and a configuration or state " +
+		"written against one may need reworking for the next. Until 1.0.0 is released, ask for " +
+		"{constraint}. Terraform installs a prerelease only for an exact version, and a " +
+		"prerelease then refuses to configure until that same version is acknowledged with the " +
+		PreReleaseArgument + " argument, so nobody runs the 1.x line by accident. Setting it " +
+		"accepts that instability: a prerelease is NOT covered by the provider's " +
+		"backward-compatibility guarantees."
+
+	versionConstraint = `version = "~> 0.0"`
+)
 
 // PreReleaseArgument is the provider argument a prerelease build has to be
 // acknowledged through before it will configure.
@@ -119,8 +141,8 @@ func (p *bwanProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp 
 	}
 
 	resp.Schema = schema.Schema{
-		Description:         providerSummary,
-		MarkdownDescription: providerSummary,
+		Description:         providerSummary + " " + strings.ReplaceAll(stabilityNotice, "{constraint}", versionConstraint),
+		MarkdownDescription: providerSummary + "\n\n~> " + strings.ReplaceAll(stabilityNotice, "{constraint}", "`"+versionConstraint+"`"),
 		Attributes:          attributes,
 	}
 }
