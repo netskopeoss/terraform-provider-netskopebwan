@@ -5,15 +5,27 @@ GOPATH ?= $(HOME)/go
 TOOLS_BIN ?= $(CURDIR)/.tools/bin
 export GOBIN := $(TOOLS_BIN)
 PATH := $(TOOLS_BIN):$(PATH)
-# CI forwards this from a repository variable, and a variable that is not set
-# there arrives as the empty string rather than not arriving at all. "?=" only
+# Where the spec comes from, most specific first:
+#
+#   OPENAPI_SPEC_URL   the whole URL of the document, for pointing at one by hand;
+#   OPENAPI_BASE_URL   the API's base URL without the version, e.g.
+#                      https://sys.api.ap.infiot.net, which is what CI sets from
+#                      the repository variable of the same name;
+#   neither            the default tenant below, the one CI sets.
+#
+# CI forwards the base URL from a repository variable, and a variable that is not
+# set there arrives as the empty string rather than not arriving at all. "?=" only
 # fills in a variable nothing has defined, and an empty environment variable
 # counts as defined, so on its own it would leave the URL empty and hand curl
 # nothing. Treat empty as unset.
-DEFAULT_OPENAPI_SPEC_URL := https://sys.api.infiot.net/v2/openapi.json
-OPENAPI_SPEC_URL ?= $(DEFAULT_OPENAPI_SPEC_URL)
+DEFAULT_OPENAPI_BASE_URL := https://sys.api.ap.infiot.net
+OPENAPI_BASE_URL ?= $(DEFAULT_OPENAPI_BASE_URL)
+ifeq ($(strip $(OPENAPI_BASE_URL)),)
+OPENAPI_BASE_URL := $(DEFAULT_OPENAPI_BASE_URL)
+endif
+OPENAPI_SPEC_URL ?= $(patsubst %/,%,$(strip $(OPENAPI_BASE_URL)))/v2/openapi.json
 ifeq ($(strip $(OPENAPI_SPEC_URL)),)
-OPENAPI_SPEC_URL := $(DEFAULT_OPENAPI_SPEC_URL)
+OPENAPI_SPEC_URL := $(patsubst %/,%,$(strip $(OPENAPI_BASE_URL)))/v2/openapi.json
 endif
 OPENAPI_SPEC_FILE := openapi.json
 OPENAPI_TF_GEN_FILE := openapi_tf_gen.yaml

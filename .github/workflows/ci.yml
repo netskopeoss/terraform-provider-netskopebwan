@@ -40,9 +40,13 @@ jobs:
       # exist in a fresh checkout, so nothing compiles before this.
       - name: Generate
         env:
-          # Point CI at another spec by setting an OPENAPI_SPEC_URL repository
-          # variable; it falls back to the URL devenv.nix carries.
-          OPENAPI_SPEC_URL: ${{ vars.OPENAPI_SPEC_URL }}
+          # The tenant whose spec the provider is generated from, set as the
+          # OPENAPI_BASE_URL repository variable, e.g. https://sys.api.ap.infiot.net.
+          # Optional: unset, the Makefile's default applies, which is that same
+          # tenant, so the variable only needs setting to point somewhere else.
+          # Every workflow that generates reads the same variable, so CI, previews
+          # and releases cannot disagree about which API they describe.
+          OPENAPI_BASE_URL: ${{ vars.OPENAPI_BASE_URL }}
         run: make generate
 
       - name: Check formatting
