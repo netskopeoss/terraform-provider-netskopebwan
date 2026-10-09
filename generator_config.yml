@@ -368,7 +368,21 @@ resources:
     schema:
       ignores: [tenant_id]
 
-  # The API tells four kinds of tag apart by a `config.type` discriminator, and
+  snmp_user:
+    create:
+      path: /snmp-users
+      method: POST
+    read:
+      path: /snmp-users/{id}
+      method: GET
+    update:
+      path: /snmp-users/{id}
+      method: PATCH
+    delete:
+      path: /snmp-users/{id}
+      method: DELETE
+
+  # The API tells four kinds of tag apart by a `type` discriminator, and
   # each kind has fields the others do not: a wanlink tag has a probe frequency,
   # an overlay tag is private or not. One resource per kind means every field is
   # really settable on the resource that has it, rather than optional everywhere
@@ -377,16 +391,16 @@ resources:
     x_terraform:
       variant: wanlink
     create:
-      path: /overlay-tags
+      path: /tags
       method: POST
     read:
-      path: /overlay-tags/{id}
+      path: /tags/{id}
       method: GET
     update:
-      path: /overlay-tags/{id}
+      path: /tags/{id}
       method: PATCH
     delete:
-      path: /overlay-tags/{id}
+      path: /tags/{id}
       method: DELETE
     schema:
       ignores: [tenant_id]
@@ -395,16 +409,16 @@ resources:
     x_terraform:
       variant: overlay
     create:
-      path: /overlay-tags
+      path: /tags
       method: POST
     read:
-      path: /overlay-tags/{id}
+      path: /tags/{id}
       method: GET
     update:
-      path: /overlay-tags/{id}
+      path: /tags/{id}
       method: PATCH
     delete:
-      path: /overlay-tags/{id}
+      path: /tags/{id}
       method: DELETE
     schema:
       ignores: [tenant_id]
@@ -413,16 +427,16 @@ resources:
     x_terraform:
       variant: topology
     create:
-      path: /overlay-tags
+      path: /tags
       method: POST
     read:
-      path: /overlay-tags/{id}
+      path: /tags/{id}
       method: GET
     update:
-      path: /overlay-tags/{id}
+      path: /tags/{id}
       method: PATCH
     delete:
-      path: /overlay-tags/{id}
+      path: /tags/{id}
       method: DELETE
     schema:
       ignores: [tenant_id]
@@ -431,16 +445,16 @@ resources:
     x_terraform:
       variant: gateway
     create:
-      path: /overlay-tags
+      path: /tags
       method: POST
     read:
-      path: /overlay-tags/{id}
+      path: /tags/{id}
       method: GET
     update:
-      path: /overlay-tags/{id}
+      path: /tags/{id}
       method: PATCH
     delete:
-      path: /overlay-tags/{id}
+      path: /tags/{id}
       method: DELETE
     schema:
       ignores: [tenant_id]
@@ -756,6 +770,15 @@ data_sources:
     schema:
       ignores: [data.tenant_id]
 
+  snmp_user:
+    read:
+      path: /snmp-users/{id}
+      method: GET
+  snmp_users:
+    read:
+      path: /snmp-users
+      method: GET
+
   software_download:
     x_terraform:
       element: true
@@ -782,7 +805,7 @@ data_sources:
     x_terraform:
       variant: wanlink
     read:
-      path: /overlay-tags/{id}
+      path: /tags/{id}
       method: GET
     schema:
       ignores: [tenant_id]
@@ -790,7 +813,7 @@ data_sources:
     x_terraform:
       variant: wanlink
     read:
-      path: /overlay-tags
+      path: /tags
       method: GET
     schema:
       ignores: [data.tenant_id]
@@ -799,7 +822,7 @@ data_sources:
     x_terraform:
       variant: overlay
     read:
-      path: /overlay-tags/{id}
+      path: /tags/{id}
       method: GET
     schema:
       ignores: [tenant_id]
@@ -807,7 +830,7 @@ data_sources:
     x_terraform:
       variant: overlay
     read:
-      path: /overlay-tags
+      path: /tags
       method: GET
     schema:
       ignores: [data.tenant_id]
@@ -816,7 +839,7 @@ data_sources:
     x_terraform:
       variant: topology
     read:
-      path: /overlay-tags/{id}
+      path: /tags/{id}
       method: GET
     schema:
       ignores: [tenant_id]
@@ -824,7 +847,7 @@ data_sources:
     x_terraform:
       variant: topology
     read:
-      path: /overlay-tags
+      path: /tags
       method: GET
     schema:
       ignores: [data.tenant_id]
@@ -833,7 +856,7 @@ data_sources:
     x_terraform:
       variant: gateway
     read:
-      path: /overlay-tags/{id}
+      path: /tags/{id}
       method: GET
     schema:
       ignores: [tenant_id]
@@ -841,7 +864,7 @@ data_sources:
     x_terraform:
       variant: gateway
     read:
-      path: /overlay-tags
+      path: /tags
       method: GET
     schema:
       ignores: [data.tenant_id]

@@ -27,7 +27,7 @@ resource "netskopebwan_user" "example" {
 
 - `email` (String)
 - `name` (String)
-- `role` (String) Must be one of: `system_admin`, `system_operator`, `system_monitor`, `admin`, `operator`, `monitor`, `user`.
+- `role` (String) Must be one of: `admin`, `monitor`, `operator`, `system_admin`, `system_monitor`, `system_operator`, `user`.
 
 ### Optional
 
@@ -39,7 +39,7 @@ resource "netskopebwan_user" "example" {
 
 ### Read-Only
 
-- `controlled` (String) Must be one of: `manual`, `sso`, `x509`, `idp`.
+- `controlled` (String) Must be one of: `idp`, `manual`, `sso`, `x509`.
 - `created_at` (String)
 - `created_by` (Attributes) (see [below for nested schema](#nestedatt--created_by))
 - `id` (String) User ID

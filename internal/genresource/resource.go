@@ -368,9 +368,9 @@ func (r *genericResource) write(ctx context.Context, op Operation, value tftypes
 		return nil, false, diags
 	}
 
-	// The schema has neither the field the API nests this kind under nor the
-	// discriminator inside it, because the resource type says which kind this is.
-	// Both go back on the way out.
+	// The schema has neither the discriminator nor, where the API nests this kind's
+	// fields, the field they sit under, because the resource type says which kind
+	// this is. Both go back on the way out.
 	body = r.def.Variant.Nest(body)
 
 	client, clientDiags := r.meta.clientFor(value)

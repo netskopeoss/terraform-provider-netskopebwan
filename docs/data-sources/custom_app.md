@@ -46,7 +46,6 @@ data "netskopebwan_custom_app" "by_filter" {
 - `name` (String)
 - `native` (Boolean)
 - `sites` (Attributes List) (see [below for nested schema](#nestedatt--sites))
-- `tenant_id` (String)
 - `type` (String)
 - `type_id` (Number)
 - `vid` (Number)
@@ -68,7 +67,7 @@ Read-Only:
 - `address_group_ids` (List of String)
 - `hosts` (List of String)
 - `port_range` (Attributes List) (see [below for nested schema](#nestedatt--definitions--port_range))
-- `protocol` (String) Must be one of: `tcp`, `udp`, `icmp`, `ipv4`.
+- `protocol` (String) Must be one of: `icmp`, `ipv4`, `tcp`, `udp`.
 - `web_access` (Boolean)
 
 <a id="nestedatt--definitions--port_range"></a>

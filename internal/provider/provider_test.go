@@ -285,11 +285,10 @@ func TestEveryRawObjectIsNamedAndGated(t *testing.T) {
 	}
 }
 
-// TestProviderWarnsThatItIsAlpha covers the two places a practitioner can meet
+// TestProviderStatesItsStability covers the two places a practitioner can meet
 // this provider: the registry's home page, which tfplugindocs renders from the
-// provider schema, and the README. Both have to carry the same warning, so the
-// warning has one wording and the README quotes it.
-func TestProviderWarnsThatItIsAlpha(t *testing.T) {
+// provider schema, and the README. Both carry the same notice.
+func TestProviderStatesItsStability(t *testing.T) {
 	ctx := context.Background()
 
 	resp := &provider.SchemaResponse{}
@@ -297,26 +296,33 @@ func TestProviderWarnsThatItIsAlpha(t *testing.T) {
 
 	require.False(t, resp.Diagnostics.HasError(), "%v", resp.Diagnostics)
 
-	require.Contains(t, resp.Schema.Description, AlphaHeadline)
-	require.Contains(t, resp.Schema.Description, AlphaDetail)
+	plain := strings.ReplaceAll(stabilityNotice, "{constraint}", versionConstraint)
 
-	// docs/index.md renders the markdown description, where the warning is a
-	// registry callout rather than another paragraph of prose.
-	require.Contains(t, resp.Schema.MarkdownDescription, "~> **"+AlphaHeadline+"**")
-	require.Contains(t, resp.Schema.MarkdownDescription, AlphaDetail)
+	require.Contains(t, resp.Schema.Description, plain)
+
+	// docs/index.md renders the markdown description, where the notice is a
+	// registry callout. The callout opens with a tilde, and the registry reads a
+	// second one in the same paragraph as strikethrough, striking out everything
+	// between them: the version constraint has to be code, and nothing else in the
+	// description may carry a tilde.
+	markdown := resp.Schema.MarkdownDescription
+
+	require.Contains(t, markdown, "~> "+strings.ReplaceAll(stabilityNotice, "{constraint}", "`"+versionConstraint+"`"))
+	require.Equal(t, 2, strings.Count(markdown, "~"), "the callout's own and the one inside the code span")
+	require.Contains(t, markdown, "`"+versionConstraint+"`")
 
 	// The notice says what acknowledging a prerelease accepts, not only that one
 	// has to be acknowledged.
-	require.Contains(t, AlphaDetail, "Setting it accepts that instability")
-	require.Contains(t, AlphaDetail, "NOT covered by the provider's backward-compatibility guarantees")
+	require.Contains(t, stabilityNotice, "Setting it accepts that instability")
+	require.Contains(t, stabilityNotice, "NOT covered by the provider's backward-compatibility guarantees")
 
 	readme, err := os.ReadFile(filepath.Join("..", "..", "README.md"))
 	require.NoError(t, err)
 
-	// The README wraps the warning across lines, quotes it as a callout and marks
-	// up the arguments it names, so it is the words that have to match rather than
-	// the layout. Only the quoting is stripped, not every ">": the warning names a
-	// "~>" constraint.
+	// The README wraps the notice across lines, quotes it as a callout and marks up
+	// the arguments it names, so it is the words that have to match rather than the
+	// layout. Only the quoting is stripped, not every ">": the notice names a "~>"
+	// constraint.
 	lines := strings.Split(string(readme), "\n")
 	for i, line := range lines {
 		lines[i] = strings.TrimPrefix(strings.TrimSpace(line), "> ")
@@ -324,8 +330,7 @@ func TestProviderWarnsThatItIsAlpha(t *testing.T) {
 
 	prose := strings.Join(strings.Fields(strings.ReplaceAll(strings.Join(lines, " "), "`", "")), " ")
 
-	require.Contains(t, prose, AlphaHeadline)
-	require.Contains(t, prose, AlphaDetail)
+	require.Contains(t, prose, plain)
 }
 
 // configure runs Configure against a provider stamped with version, with the
@@ -507,16 +512,16 @@ func TestTagKindsAreSeparateResources(t *testing.T) {
 		"tag_gateway":  "gateway",
 	}, variants)
 
-	// The API writes the kind inside the tag, so every one of them has to be
-	// recognised there rather than on the tag itself.
+	// The kind is written on the tag itself, so every one of them has to be
+	// recognised there.
 	for _, definition := range registry.Resources() {
 		if definition.Variant != nil && strings.HasPrefix(definition.Name, "tag_") {
-			require.Equal(t, "config.type", definition.Variant.Discriminator, definition.Name)
+			require.Equal(t, "type", definition.Variant.Discriminator, definition.Name)
 
 			// And nowhere in the schema, because the resource name has already said
-			// it: the config the API wraps a tag's fields in is hoisted away, and the
-			// runtime is what puts it back.
-			require.Equal(t, "config", definition.Variant.Wrapper, definition.Name)
+			// it: the discriminator is left out, and the runtime is what puts it back.
+			require.True(t, definition.Variant.Implied, definition.Name)
+			require.Empty(t, definition.Variant.Wrapper, definition.Name)
 
 			attributes := definition.Schema(context.Background()).Attributes
 			require.NotContains(t, attributes, "config", definition.Name)

@@ -38,7 +38,7 @@ data "netskopebwan_users" "example" {
 
 Read-Only:
 
-- `controlled` (String) Must be one of: `manual`, `sso`, `x509`, `idp`.
+- `controlled` (String) Must be one of: `idp`, `manual`, `sso`, `x509`.
 - `created_at` (String)
 - `created_by` (Attributes) (see [below for nested schema](#nestedatt--data--created_by))
 - `email` (String)

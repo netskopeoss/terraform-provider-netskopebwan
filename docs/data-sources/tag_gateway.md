@@ -37,7 +37,6 @@ data "netskopebwan_tag_gateway" "by_filter" {
 - `created_at` (String)
 - `created_by` (Attributes) (see [below for nested schema](#nestedatt--created_by))
 - `description` (String)
-- `enabled` (Boolean)
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
 - `name` (String)

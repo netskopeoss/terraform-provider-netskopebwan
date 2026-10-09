@@ -608,9 +608,13 @@ func (p *Prep) typeUntyped(schema map[string]any, loc string) {
 // carrying an `enum`, so the list a validator already enforces also reaches the
 // generated docs. Non-string members are left out of the list: an enum mixing
 // scalar types is not something the BWAN spec does today, and stringifying a
-// number or bool loses whether it round-trips as one.
+// number or bool loses whether it round-trips as one. The values are listed
+// alphabetically, because the order the API declares them in is whatever its
+// build happened to emit: two tenants running different builds list the same audit
+// activities in different orders, and the docs should not follow. Documenting a schema that
+// already ends with its list leaves it alone.
 func (p *Prep) documentEnum(schema map[string]any, loc string) {
-	values := stringList(schema["enum"])
+	values := slices.Sorted(slices.Values(stringList(schema["enum"])))
 	if len(values) == 0 {
 		return
 	}
@@ -620,7 +624,14 @@ func (p *Prep) documentEnum(schema map[string]any, loc string) {
 		quoted[i] = "`" + value + "`"
 	}
 
+	// A schema can be reached more than once — a discriminated branch is both a
+	// component of its own and a member of the union that names it — and the
+	// values must not be listed again each time.
 	suffix := EnumDescriptionPrefix + " " + strings.Join(quoted, ", ") + "."
+	if strings.HasSuffix(stringOr(schema["description"]), suffix) {
+		return
+	}
+
 	schema["description"] = strings.TrimSpace(stringOr(schema["description"]) + " " + suffix)
 }
 

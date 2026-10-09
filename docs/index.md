@@ -3,14 +3,14 @@
 page_title: "netskopebwan Provider"
 description: |-
   Manages Netskope Borderless WAN through its v2 API.
-  ~> The 1.x line is an alpha; use the released 0.x line for now. 1.x resources, data sources and attributes are generated from the BWAN v2 OpenAPI specification, which is itself still changing, so any of them may be renamed, reshaped or removed from one prerelease to the next, and a configuration or state written against one may need reworking for the next. Until 1.0.0 is released, ask for version = "~> 0.0". Terraform installs a prerelease only for an exact version, and a prerelease then refuses to configure until that same version is acknowledged with the enable_pre_release argument, so nobody runs the 1.x line by accident. Setting it accepts that instability: a prerelease is NOT covered by the provider's backward-compatibility guarantees.
+  ~> 1.x resources, data sources and attributes are generated from the BWAN v2 OpenAPI specification, which is itself still changing, so any of them may be renamed, reshaped or removed from one prerelease to the next, and a configuration or state written against one may need reworking for the next. Until 1.0.0 is released, ask for version = "~> 0.0". Terraform installs a prerelease only for an exact version, and a prerelease then refuses to configure until that same version is acknowledged with the enable_pre_release argument, so nobody runs the 1.x line by accident. Setting it accepts that instability: a prerelease is NOT covered by the provider's backward-compatibility guarantees.
 ---
 
 # netskopebwan Provider
 
 Manages Netskope Borderless WAN through its v2 API.
 
-~> **The 1.x line is an alpha; use the released 0.x line for now.** 1.x resources, data sources and attributes are generated from the BWAN v2 OpenAPI specification, which is itself still changing, so any of them may be renamed, reshaped or removed from one prerelease to the next, and a configuration or state written against one may need reworking for the next. Until 1.0.0 is released, ask for version = "~> 0.0". Terraform installs a prerelease only for an exact version, and a prerelease then refuses to configure until that same version is acknowledged with the enable_pre_release argument, so nobody runs the 1.x line by accident. Setting it accepts that instability: a prerelease is NOT covered by the provider's backward-compatibility guarantees.
+~> 1.x resources, data sources and attributes are generated from the BWAN v2 OpenAPI specification, which is itself still changing, so any of them may be renamed, reshaped or removed from one prerelease to the next, and a configuration or state written against one may need reworking for the next. Until 1.0.0 is released, ask for `version = "~> 0.0"`. Terraform installs a prerelease only for an exact version, and a prerelease then refuses to configure until that same version is acknowledged with the enable_pre_release argument, so nobody runs the 1.x line by accident. Setting it accepts that instability: a prerelease is NOT covered by the provider's backward-compatibility guarantees.
 
 ## Example Usage
 

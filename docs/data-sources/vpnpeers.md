@@ -51,7 +51,7 @@ For example '2019-05-08T05:30:30.206Z'
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--data--modified_by))
 - `name` (String) Display name of the VPN Peer.
-- `type` (String) type of the vpn peer Must be one of: `IKEV2`, `GRE`.
+- `type` (String) type of the vpn peer Must be one of: `GRE`, `IKEV2`.
 
 <a id="nestedatt--data--created_by"></a>
 ### Nested Schema for `data.created_by`
@@ -69,8 +69,8 @@ Read-Only:
 
 - `dh_group` (Number) Dh Group of the VPN Peer.
 - `dpd_timeout` (Number) Dpd Timeout in seconds
-- `encryption` (String) type of encryption to be used Must be one of: `any`, `AES_CBC_128`, `AES_CBC_192`, `AES_CBC_256`, `AES_GCM_128`, `AES_GCM_192`, `AES_GCM_256`.
-- `hash` (String) type of hash to be used Must be one of: `any`, `SHA2_256`, `SHA2_384`, `SHA2_512`.
+- `encryption` (String) type of encryption to be used Must be one of: `AES_CBC_128`, `AES_CBC_192`, `AES_CBC_256`, `AES_GCM_128`, `AES_GCM_192`, `AES_GCM_256`, `any`.
+- `hash` (String) type of hash to be used Must be one of: `SHA2_256`, `SHA2_384`, `SHA2_512`, `any`.
 - `ike_sa_lifetime` (Number) Ike SA Lifetime in seconds
 - `ipsec_sa_lifetime` (Number) Ipsec SA Lifetime in seconds
 - `pfs` (Boolean) Indicates whether Pfs is enabled

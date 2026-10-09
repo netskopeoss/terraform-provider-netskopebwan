@@ -47,8 +47,9 @@ error finding resource(s): failed to extract 'served_tenant.create':
 
 That is `generator_config.yml` naming a path the spec no longer has. Diagnose it
 by comparing the two — `/spec-drift` does this — and expect renames as well as
-removals: `/tags` became `/overlay-tags`, and its `type` discriminator moved
-into a nested `config`. Do not "fix" it by deleting the entry until you have
+removals: `/tags` became `/overlay-tags`, with its `type` discriminator moved
+into a nested `config`, and then went back to `/tags` with `type` on the tag
+again. Do not "fix" it by deleting the entry until you have
 checked whether the endpoint was renamed.
 
 Prep warnings are load-bearing. `tfgen: prep: generator_config claims a variant

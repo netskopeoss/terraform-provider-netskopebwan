@@ -42,7 +42,8 @@ resource "netskopebwan_client_template" "example" {
 - `ipv4_pool_range` (Attributes List) (see [below for nested schema](#nestedatt--ipv4_pool_range))
 - `labels` (List of String)
 - `mtu_bytes` (Number)
-- `multi_link_support` (String) Multilink support type Must be one of: `none`, `active_active`, `active_standby`.
+- `multi_link_support` (String) Multilink support type Must be one of: `active_active`, `active_standby`, `none`.
+- `on_demand` (Boolean)
 - `on_premise_detection` (Attributes) (see [below for nested schema](#nestedatt--on_premise_detection))
 - `software_version` (String)
 - `start_before_logon` (Boolean)

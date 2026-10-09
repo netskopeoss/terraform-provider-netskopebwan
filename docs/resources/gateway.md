@@ -24,7 +24,7 @@ resource "netskopebwan_gateway" "example" {
 
 ### Required
 
-- `model` (String) Must be one of: `NSGVirtual`, `NSG100W`, `NSG101CW`, `NSG500W`, `NSG200W`, `NSG200CW`, `NSG1000W`, `NSG1500W`, `NSG2000`, `NSG2104W`, `NSG2108CW`, `NSG3000`, `NSG4000`.
+- `model` (String) Must be one of: `NSG1000W`, `NSG100W`, `NSG101CW`, `NSG1500W`, `NSG2000`, `NSG200CW`, `NSG200W`, `NSG2104W`, `NSG2108CW`, `NSG3000`, `NSG4000`, `NSG500W`, `NSGVirtual`.
 - `name` (String)
 
 ### Read-Only

@@ -40,7 +40,6 @@ resource "netskopebwan_gateway_group" "example" {
 - `id` (String) Gateway Group ID
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
-- `tenant_id` (String)
 
 <a id="nestedatt--gateways"></a>
 ### Nested Schema for `gateways`

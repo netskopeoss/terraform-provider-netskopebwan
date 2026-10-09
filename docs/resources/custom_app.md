@@ -80,7 +80,6 @@ resource "netskopebwan_custom_app" "example" {
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
 - `sites` (Attributes List) (see [below for nested schema](#nestedatt--sites))
-- `tenant_id` (String)
 - `type` (String)
 - `vid` (Number)
 
@@ -92,7 +91,7 @@ Optional:
 - `address_group_ids` (List of String)
 - `hosts` (List of String)
 - `port_range` (Attributes List) (see [below for nested schema](#nestedatt--definitions--port_range))
-- `protocol` (String) Must be one of: `tcp`, `udp`, `icmp`, `ipv4`.
+- `protocol` (String) Must be one of: `icmp`, `ipv4`, `tcp`, `udp`.
 - `web_access` (Boolean)
 
 <a id="nestedatt--definitions--port_range"></a>

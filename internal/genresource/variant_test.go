@@ -418,6 +418,26 @@ func TestAnUnwrappedVariantReshapesNothing(t *testing.T) {
 	}
 }
 
+// A kind whose discriminator sits on the object itself is not wrapped in anything,
+// but the schema still leaves it out, so a request has to say it.
+func TestAnImpliedDiscriminatorIsWrittenIntoARequest(t *testing.T) {
+	wanlink := &Variant{Name: "wanlink", Discriminator: "type", Value: "wanlink", Implied: true}
+
+	body := map[string]any{"name": "probe", "frequency": 60000}
+
+	require.Equal(t, map[string]any{"name": "probe", "frequency": 60000, "type": "wanlink"}, wanlink.Nest(body))
+	require.Equal(t, map[string]any{"name": "probe", "frequency": 60000}, body, "the caller's body is left alone")
+
+	// A kind with nothing else to say still has to name itself.
+	require.Equal(t, map[string]any{"type": "wanlink"}, wanlink.Nest(nil))
+
+	// A response is recognised by the same field, and nothing about it is reshaped.
+	document := map[string]any{"name": "probe", "type": "wanlink"}
+
+	require.True(t, wanlink.Matches(document))
+	require.Equal(t, document, wanlink.Flatten(document))
+}
+
 // monitorDefinition mirrors a link monitor: one resource whose target takes one of
 // three forms, each a block of its own.
 func monitorDefinition() Definition {

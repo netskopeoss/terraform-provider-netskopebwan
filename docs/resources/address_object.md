@@ -45,7 +45,6 @@ resource "netskopebwan_address_object" "example" {
 - `id` (String) The ID of this resource.
 - `modified_at` (String)
 - `modified_by` (Attributes) (see [below for nested schema](#nestedatt--modified_by))
-- `tenant_id` (String) TenantId of the Address Object
 
 <a id="nestedatt--created_by"></a>
 ### Nested Schema for `created_by`
